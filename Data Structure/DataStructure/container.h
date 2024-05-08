@@ -5,6 +5,7 @@
 #define TMacro template<typename T>
 #endif // ! 
 
+#include <cassert>
 
 
 

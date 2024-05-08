@@ -151,11 +151,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DataStructure.cpp" />
-    <ClCompile Include="Vector.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="container.h" />
-    <ClInclude Include="Vector.h" />
+    <ClInclude Include="containerBase.h" />
+    <ClInclude Include="Vector.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
