@@ -25,28 +25,30 @@ namespace MContainer
 		Vector& append(const T& t)noexcept;
 		Vector& removeAt(uint pos)noexcept;
 		Vector& removeAt(uint pos, uint len)noexcept;
-		Vector& insert(uint pos, const T& t);
+		Vector& insert(uint pos, const T& t)noexcept;
 		const T& at(uint pos)const;
-		void clear();
-		Vector & removeOne(const T& t, uint pos = 0, bool onlyOne = true);
-		uint size()const { return m_size; };
-		uint maxSize()const { return m_maxSize; };
-		void setStep(uint step) { m_step = step; };
-		uint step()const { return m_step; };
-		bool isEmpty() { return m_size; };
-		void resize(uint size);
-		void resize(uint size, const T& t);
-		void swap(uint first, uint second);
-		void removeFirst();
-		void removeLast();
+		void clear()noexcept;
+		Vector & removeOne(const T& t, uint pos = 0, bool onlyOne = true)noexcept;
+		uint size()const noexcept { return m_size; };
+		uint maxSize()const noexcept { return m_maxSize; };
+		void setStep(uint step)noexcept { m_step = step; };
+		uint step()const noexcept { return m_step; };
+		bool isEmpty()const noexcept { return m_size; };
+		void resize(uint size)noexcept;
+		void resize(uint size, const T& t)noexcept;
+		void swap(uint first, uint second)noexcept;
+		void removeFirst()noexcept;
+		void removeLast()noexcept;
 		const T& first()const;
 		const T& last()const;
 		T& first();
 		T& last();
-		bool contains(const T& t, uint pos = 0);
-		size_t find(const T&t,uint pos = 0) const;
+		bool contains(const T& t, uint pos = 0)const noexcept;
+		size_t find(const T&t, uint pos = 0) const noexcept;
 		template<typename Funtion>
-		size_t find(const T&t,const Funtion &f, uint pos = 0) const;
+		size_t find(const T&t, const Funtion &f, uint pos = 0) const noexcept;
+		uint capacity() const noexcept { return m_capacity; };
+		void reverse()noexcept;
 		T& operator[](uint pos)noexcept;
 	private:
 		T* m_element;
@@ -74,7 +76,7 @@ namespace MContainer
 
 	};
 
-	
+
 #define OverstepMaxAssert assert(m_capacity <= m_maxSize);
 #define ElementSize sizeof(T) * m_size
 	template<typename T >
@@ -221,7 +223,7 @@ namespace MContainer
 	}
 
 	template<typename T>
-	inline Vector<T> & Vector<T>::insert(uint pos, const T & t)
+	inline Vector<T> & Vector<T>::insert(uint pos, const T & t)noexcept
 	{
 		uint size = m_size + 1;
 		if (pos > size)
@@ -262,7 +264,7 @@ namespace MContainer
 	}
 
 	template<typename T>
-	inline void Vector<T>::clear()
+	inline void Vector<T>::clear()noexcept
 	{
 		freeMemory();
 		m_size = 0;
@@ -271,7 +273,7 @@ namespace MContainer
 	}
 
 	template<typename T>
-	inline Vector<T> & Vector<T>::removeOne(const T& t, uint pos, bool onlyOne)
+	inline Vector<T> & Vector<T>::removeOne(const T& t, uint pos, bool onlyOne)noexcept
 	{
 		if (pos >= m_size)
 			return *this;
@@ -300,21 +302,19 @@ namespace MContainer
 	template<typename T >
 	T& MContainer::Vector<T>::last()
 	{
-		if (isEmpty())
-			return{};
+		_throw(!m_size);
 		return m_element[m_size - 1];
 	}
 
 	template<typename T >
 	T& MContainer::Vector<T>::first()
 	{
-		if (isEmpty())
-			return{};
+		_throw(!m_size);
 		return m_element[0];
 	}
 
 	template<typename T >
-	bool MContainer::Vector<T>::contains(const T& t, uint pos /*= 0*/)
+	bool MContainer::Vector<T>::contains(const T& t, uint pos /*= 0*/)const noexcept
 	{
 		for (; pos < m_size; pos++)
 		{
@@ -327,33 +327,31 @@ namespace MContainer
 	template<typename T >
 	const T& MContainer::Vector<T>::last()const
 	{
-		if (isEmpty())
-			return{};
+		_throw(!m_size);
 		return m_element[m_size - 1];
 	}
 
 	template<typename T >
 	const T& MContainer::Vector<T>::first()const
 	{
-		if (isEmpty())
-			return{};
+		_throw(!m_size);
 		return m_element[0];
 	}
 
 	template<typename T >
-	void MContainer::Vector<T>::removeLast()
+	void MContainer::Vector<T>::removeLast()noexcept
 	{
 		removeAt(m_size - 1);
 	}
 
 	template<typename T >
-	void MContainer::Vector<T>::removeFirst()
+	void MContainer::Vector<T>::removeFirst()noexcept
 	{
 		removeAt(0);
 	}
 
 	template<typename T >
-	void MContainer::Vector<T>::swap(uint first, uint second)
+	void MContainer::Vector<T>::swap(uint first, uint second)noexcept
 	{
 		if (first == second
 			|| first >= m_size
@@ -365,24 +363,24 @@ namespace MContainer
 	}
 
 	template<typename T >
-	void MContainer::Vector<T>::resize(uint size, const T& t)
+	void MContainer::Vector<T>::resize(uint size, const T& t)noexcept
 	{
 		clear();
 		m_capacity = size;
 		m_size = size;
-		m_element = new T[m_capacity]{t};
+		m_element = new T[m_capacity]{ t };
 
 	}
 
 	template<typename T >
-	void MContainer::Vector<T>::resize(uint size)
+	void MContainer::Vector<T>::resize(uint size)noexcept
 	{
 		resize(size, {});
 	}
 
 
 	template<typename T >
-	size_t MContainer::Vector<T>::find(const T&t, uint pos)const
+	size_t MContainer::Vector<T>::find(const T&t, uint pos)const noexcept
 	{
 		for (; pos < m_size; pos++)
 		{
@@ -395,7 +393,7 @@ namespace MContainer
 
 	template<typename T >
 	template<typename Funtion>
-	size_t MContainer::Vector<T>::find(const T&t, const Funtion& f, uint pos /*= 0*/)const
+	size_t MContainer::Vector<T>::find(const T&t, const Funtion& f, uint pos /*= 0*/)const noexcept
 	{
 		for (; pos < m_size; pos++)
 		{
@@ -405,6 +403,21 @@ namespace MContainer
 		return m_nopos;
 	}
 
+
+	template<typename T >
+	void MContainer::Vector<T>::reverse() noexcept
+	{
+		if (isEmpty())
+			return;
+		T tmp;
+		for (size_t i = 0; i < m_size / 2; i++)
+		{
+			tmp = m_element[i];
+			m_element[i] = m_element[m_size - 1 - i];
+			m_element[m_size - 1 - i] = tmp;
+
+		}
+	}
 }
 
 #endif // !MVectorContainer 
