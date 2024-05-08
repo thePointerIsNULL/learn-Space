@@ -11,11 +11,18 @@ namespace MContainer
 	class Vector final :public ContainerBase
 	{
 	public:
+
+		template<typename T >
+		friend class IteratorVector;
+
+		template<typename T >
+		friend class IteratorVectorConst;
+
 		explicit Vector()noexcept;
 		explicit Vector(uint size)noexcept;
 
-		explicit Vector(const Vector & t)noexcept;
-		explicit Vector(Vector && t)noexcept;
+		explicit Vector(const Vector& t)noexcept;
+		explicit Vector(Vector&& t)noexcept;
 
 		Vector& operator= (const Vector& t)noexcept;
 		Vector& operator= (Vector&& t)noexcept;
@@ -28,7 +35,7 @@ namespace MContainer
 		Vector& insert(uint pos, const T& t)noexcept;
 		const T& at(uint pos)const;
 		void clear()noexcept;
-		Vector & removeOne(const T& t, uint pos = 0, bool onlyOne = true)noexcept;
+		Vector& removeOne(const T& t, uint pos = 0, bool onlyOne = true)noexcept;
 		uint size()const noexcept { return m_size; };
 		uint maxSize()const noexcept { return m_maxSize; };
 		void setStep(uint step)noexcept { m_step = step; };
@@ -44,12 +51,19 @@ namespace MContainer
 		T& first();
 		T& last();
 		bool contains(const T& t, uint pos = 0)const noexcept;
-		size_t find(const T&t, uint pos = 0) const noexcept;
+		size_t find(const T& t, uint pos = 0) const noexcept;
 		template<typename Funtion>
-		size_t find(const T&t, const Funtion &f, uint pos = 0) const noexcept;
+		size_t find(const T& t, const Funtion& f, uint pos = 0) const noexcept;
 		uint capacity() const noexcept { return m_capacity; };
 		void reverse()noexcept;
 		T& operator[](uint pos)noexcept;
+
+		IteratorVector<T> begin()noexcept;
+		IteratorVector<T> end()noexcept;
+
+		IteratorVectorConst<T> begin()const noexcept;
+		IteratorVectorConst<T> end()const noexcept;
+
 	private:
 		T* m_element;
 		uint m_size;
@@ -73,7 +87,6 @@ namespace MContainer
 				m_element = nullptr;
 			}
 		}
-
 	};
 
 
@@ -99,7 +112,7 @@ namespace MContainer
 
 
 	template<typename T >
-	MContainer::Vector<T>::Vector(const Vector & t) noexcept
+	MContainer::Vector<T>::Vector(const Vector& t) noexcept
 	{
 		if (&t == this)
 			return;
@@ -116,7 +129,7 @@ namespace MContainer
 	}
 
 	template<typename T >
-	MContainer::Vector<T>::Vector(Vector && t) noexcept
+	MContainer::Vector<T>::Vector(Vector&& t) noexcept
 	{
 		if (&t == this)
 			return;
@@ -134,7 +147,7 @@ namespace MContainer
 	}
 
 	template<typename T>
-	inline Vector<T> & Vector<T>::operator=(const Vector & t) noexcept
+	inline Vector<T>& Vector<T>::operator=(const Vector& t) noexcept
 	{
 		if (&t == this)
 			return *this;
@@ -151,7 +164,7 @@ namespace MContainer
 	}
 
 	template<typename T>
-	inline Vector<T> & Vector<T>::operator=(Vector && t) noexcept
+	inline Vector<T>& Vector<T>::operator=(Vector&& t) noexcept
 	{
 		if (&t == this)
 			return *this;
@@ -177,7 +190,7 @@ namespace MContainer
 
 
 	template<typename T>
-	inline Vector<T> & Vector<T>::append(const T & t) noexcept
+	inline Vector<T>& Vector<T>::append(const T& t) noexcept
 	{
 		if (m_size + 1 > m_capacity)
 		{
@@ -217,13 +230,13 @@ namespace MContainer
 
 
 	template<typename T>
-	inline Vector<T> & Vector<T>::removeAt(uint pos) noexcept
+	inline Vector<T>& Vector<T>::removeAt(uint pos) noexcept
 	{
 		return removeAt(pos, 1);
 	}
 
 	template<typename T>
-	inline Vector<T> & Vector<T>::insert(uint pos, const T & t)noexcept
+	inline Vector<T>& Vector<T>::insert(uint pos, const T& t)noexcept
 	{
 		uint size = m_size + 1;
 		if (pos > size)
@@ -256,7 +269,7 @@ namespace MContainer
 	}
 
 	template<typename T>
-	inline const T & Vector<T>::at(uint pos) const
+	inline const T& Vector<T>::at(uint pos) const
 	{
 		_throw(pos >= m_size);
 
@@ -273,7 +286,7 @@ namespace MContainer
 	}
 
 	template<typename T>
-	inline Vector<T> & Vector<T>::removeOne(const T& t, uint pos, bool onlyOne)noexcept
+	inline Vector<T>& Vector<T>::removeOne(const T& t, uint pos, bool onlyOne)noexcept
 	{
 		if (pos >= m_size)
 			return *this;
@@ -293,7 +306,7 @@ namespace MContainer
 	}
 
 	template<typename T>
-	inline T & Vector<T>::operator[](uint pos) noexcept
+	inline T& Vector<T>::operator[](uint pos) noexcept
 	{
 		_throw(pos >= m_size);
 		return m_element[pos];
@@ -380,7 +393,7 @@ namespace MContainer
 
 
 	template<typename T >
-	size_t MContainer::Vector<T>::find(const T&t, uint pos)const noexcept
+	size_t MContainer::Vector<T>::find(const T& t, uint pos)const noexcept
 	{
 		for (; pos < m_size; pos++)
 		{
@@ -393,7 +406,7 @@ namespace MContainer
 
 	template<typename T >
 	template<typename Funtion>
-	size_t MContainer::Vector<T>::find(const T&t, const Funtion& f, uint pos /*= 0*/)const noexcept
+	size_t MContainer::Vector<T>::find(const T& t, const Funtion& f, uint pos /*= 0*/)const noexcept
 	{
 		for (; pos < m_size; pos++)
 		{
@@ -415,9 +428,65 @@ namespace MContainer
 			tmp = m_element[i];
 			m_element[i] = m_element[m_size - 1 - i];
 			m_element[m_size - 1 - i] = tmp;
-
 		}
 	}
+
+
+	template<typename T >
+	IteratorVectorConst<T> MContainer::Vector<T>::end() const noexcept
+	{
+		return IteratorVectorConst(m_element + size);
+	}
+
+	template<typename T >
+	IteratorVectorConst<T> MContainer::Vector<T>::begin() const noexcept
+	{
+		return IteratorVectorConst(m_element);
+	}
+
+	template<typename T >
+	IteratorVector<T> MContainer::Vector<T>::end()noexcept
+	{
+		return IteratorVector(m_element + size);
+	}
+
+	template<typename T >
+	IteratorVector<T> MContainer::Vector<T>::begin()noexcept
+	{
+		return IteratorVector(m_element);
+	}
+
+
+
+
+
+
+
+
+
+	template<typename T >
+	class IteratorVector :public  std::iterator<std::random_access_iterator_tag, T>
+	{
+	private:
+		T* m_ptr;
+	public:
+		T operator++()
+		{
+			m_
+		}
+
+	};
+
+	template<typename T >
+	class IteratorVectorConst :public  std::iterator<std::random_access_iterator_tag, T>
+	{
+	public:
+
+	private:
+		T* m_ptr;
+	};
+
+
 }
 
 #endif // !MVectorContainer 
