@@ -7,22 +7,23 @@
 
 namespace MContainer
 {
+	
+	template<typename T >
+	class IteratorVector;
+
+	template<typename T >
+	class IteratorVectorConst;
+
+
 	template<typename T >
 	class Vector final :public ContainerBase
 	{
 	public:
-
-		template<typename T >
-		friend class IteratorVector;
-
-		template<typename T >
-		friend class IteratorVectorConst;
-
 		explicit Vector()noexcept;
 		explicit Vector(uint size)noexcept;
 
-		explicit Vector(const Vector& t)noexcept;
-		explicit Vector(Vector&& t)noexcept;
+		Vector(const Vector& t)noexcept;
+		Vector(Vector&& t)noexcept;
 
 		Vector& operator= (const Vector& t)noexcept;
 		Vector& operator= (Vector&& t)noexcept;
@@ -117,8 +118,6 @@ namespace MContainer
 		if (&t == this)
 			return;
 
-		this->clear();
-
 		this->m_element = new T[t.m_capacity];
 		this->m_size = t.m_size;
 		this->m_step = t.m_step;
@@ -134,7 +133,6 @@ namespace MContainer
 		if (&t == this)
 			return;
 
-		this->clear();
 
 		this->m_element = t.m_element;
 		this->m_size = t.m_size;
@@ -152,7 +150,6 @@ namespace MContainer
 		if (&t == this)
 			return *this;
 
-		this->clear();
 
 		this->m_element = new T[t.m_capacity];
 		this->m_size = t.m_size;
@@ -223,7 +220,7 @@ namespace MContainer
 		uint range = pos + len;
 
 		uint size = m_size - range;
-		std::memmove(m_element + pos, m_element + range, ElementSize);
+		std::memmove(m_element + pos, m_element + range, sizeof(T) * size);
 		m_size -= len;
 		return *this;
 	}
@@ -435,25 +432,25 @@ namespace MContainer
 	template<typename T >
 	IteratorVectorConst<T> MContainer::Vector<T>::end() const noexcept
 	{
-		return IteratorVectorConst(m_element + size);
+		return IteratorVectorConst<T>(m_element + m_size);
 	}
 
 	template<typename T >
 	IteratorVectorConst<T> MContainer::Vector<T>::begin() const noexcept
 	{
-		return IteratorVectorConst(m_element);
+		return IteratorVectorConst<T>(m_element);
 	}
 
 	template<typename T >
 	IteratorVector<T> MContainer::Vector<T>::end()noexcept
 	{
-		return IteratorVector(m_element + size);
+		return IteratorVector<T>(m_element + m_size);
 	}
 
 	template<typename T >
 	IteratorVector<T> MContainer::Vector<T>::begin()noexcept
 	{
-		return IteratorVector(m_element);
+		return IteratorVector<T>(m_element);
 	}
 
 
@@ -468,22 +465,136 @@ namespace MContainer
 	class IteratorVector :public  std::iterator<std::random_access_iterator_tag, T>
 	{
 	private:
+		friend  Vector<T>;
 		T* m_ptr;
-	public:
-		T operator++()
+		IteratorVector<T>(T* t)
+			:m_ptr(t)
 		{
-			m_
+		
 		}
-
+	public:
+		IteratorVector<T> operator++()
+		{
+			return ++m_ptr;
+		}
+		IteratorVector<T> operator++(int)
+		{
+			T * tmp = m_ptr;
+			m_ptr++;
+			return tmp;
+		}
+		IteratorVector<T> operator--()
+		{
+			return --m_ptr;
+		}
+		IteratorVector<T> operator--(int)
+		{
+			T * tmp = m_ptr;
+			m_ptr--;
+			return tmp;
+		}
+		T*operator->()
+		{
+			return m_ptr;
+		}
+		T& operator*()
+		{
+			return* m_ptr;
+		}
+		bool operator!=(const IteratorVector<T>& t)const
+		{
+			return m_ptr != t.m_ptr;
+		}
+		bool operator==(const IteratorVector<T>& t)const
+		{
+			return m_ptr == t.m_ptr;
+		}
+		bool operator<(const IteratorVector<T>& t)const
+		{
+			return m_ptr < t.m_ptr;
+		}
+		bool operator>(const IteratorVector<T>& t)const
+		{
+			return m_ptr > t.m_ptr;
+		}
+		IteratorVector<T> operator+=(difference_type size)const
+		{
+			T* tmp = m_ptr + size;
+			return tmp;
+		}
+		IteratorVector<T> operator-=(difference_type size)const
+		{
+			T* tmp = m_ptr - size;
+			return tmp;
+		}
 	};
 
 	template<typename T >
 	class IteratorVectorConst :public  std::iterator<std::random_access_iterator_tag, T>
 	{
-	public:
-
 	private:
+		friend  Vector<T>;
 		T* m_ptr;
+		IteratorVectorConst<T>(T* t)
+			: m_ptr(t)
+		{
+
+		}
+	public:
+		IteratorVectorConst<T> operator++()
+		{
+			return ++m_ptr;
+		}
+		IteratorVectorConst<T> operator++(int)
+		{
+			T * tmp = m_ptr;
+			m_ptr++;
+			return tmp;
+		}
+		IteratorVectorConst<T> operator--()
+		{
+			-return -m_ptr;
+		}
+		IteratorVectorConst<T> operator--(int)
+		{
+			T * tmp = m_ptr;
+			m_ptr--;
+			return tmp;
+		}
+		const T *operator->()
+		{
+			return m_ptr;
+		}
+		const T& operator*()
+		{
+			return*m_ptr;
+		}
+		bool operator!=(const IteratorVectorConst<T>& t)const
+		{
+			return m_ptr != t.m_ptr;
+		}
+		bool operator==(const IteratorVectorConst<T>& t)const
+		{
+			return m_ptr == t.m_ptr;
+		}
+		bool operator<(const IteratorVectorConst<T>& t)const
+		{
+			return m_ptr < t.m_ptr;
+		}
+		bool operator>(const IteratorVectorConst<T>& t)const
+		{
+			return m_ptr > t.m_ptr;
+		}
+		IteratorVectorConst<T> operator+=(difference_type size)const
+		{
+			T* tmp = m_ptr + size;
+			return tmp;
+		}
+		IteratorVectorConst<T> operator-=(difference_type size)const
+		{
+			T* tmp = m_ptr - size;
+			return tmp;
+		}
 	};
 
 
