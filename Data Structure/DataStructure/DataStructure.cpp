@@ -2,10 +2,11 @@
 //
 #include <iostream>
 #include <algorithm>
-#include <QtCore/QVector>
+//#include <QtCore/QVector>
 #include "Vector.hpp"
 #include <random>
 #include <chrono>
+#include "List.hpp"
 class A
 {
 public:
@@ -73,19 +74,19 @@ void verify(T1& t1, T2& t2 /*±ê×¼ÈÝÆ÷*/)
 }
 
 
-//int main()
-//{
-//	using namespace MContainer;
-//
-//
-//	Vector<int> v1;
-//	QVector<int> v2;
-//
-//	verify(v1, v2);
-//
-//
-//	return 0;
-//}
+int main()
+{
+	using namespace MContainer;
+
+
+	/*Vector<int> v1;
+	QVector<int> v2;*/
+
+	//verify(v1, v2);
+
+
+	return 0;
+}
 
 
 
