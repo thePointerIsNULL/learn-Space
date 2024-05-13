@@ -159,6 +159,7 @@
   <ItemGroup>
     <ClInclude Include="container.h" />
     <ClInclude Include="containerBase.h" />
+    <ClInclude Include="List.hpp" />
     <ClInclude Include="Vector.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

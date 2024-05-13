@@ -72,7 +72,6 @@ namespace MContainer
 		uint m_capacity;
 
 		static constexpr uint m_stepUint = 10;
-		static constexpr size_t m_npos = -1;
 
 		void _throw(bool v)const
 		{
