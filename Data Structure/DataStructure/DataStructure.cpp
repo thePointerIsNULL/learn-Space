@@ -7,6 +7,10 @@
 #include <random>
 #include <chrono>
 #include "List.hpp"
+#include <QtCore/QList>
+#include <QtCore/QFile>
+#include <QtCore/QTextStream>
+
 class A
 {
 public:
@@ -16,13 +20,18 @@ private:
 };
 
 template <typename T1, typename T2 >
-void verify(T1& t1, T2& t2 /*标准容器*/)
+void verify(T1& t1, T2& t2 /*标准容器*/, int seed = 0xFFFFFF)
 {
+	std::cout << " \n---- fun start ---- " << std::endl;
+
 	auto start = std::chrono::high_resolution_clock::now();
 
-
+	QFile file("D:/verify output.txt");
+	file.open(QIODevice::WriteOnly);
+	QTextStream stream(&file);
+	
 	std::mt19937 rng(std::random_device{}());
-	std::uniform_int_distribution<int> dist(0, 0xFFFFF);
+	std::uniform_int_distribution<int> dist(0, seed);
 
 	int size = dist(rng);
 	for (size_t i = 0; i < size; i++)
@@ -32,12 +41,14 @@ void verify(T1& t1, T2& t2 /*标准容器*/)
 		{
 			t1.append(number);
 			t2.append(number);
+			stream << QString("append:%1;\n").arg(QString::number(number));
 		}
 		else if (number % 3 == 1
 			&& number < t2.size())
 		{
 			t1.insert(number, number);
 			t2.insert(number, number);
+			stream << QString("insert:%1;size:%2\n").arg(QString::number(number)).arg(QString::number(t1.size()));
 		}
 		else
 		{
@@ -45,10 +56,11 @@ void verify(T1& t1, T2& t2 /*标准容器*/)
 			{
 				t1.removeAt(number);
 				t2.removeAt(number);
+				stream << QString("removeAt:%1;\n").arg(QString::number(number));
 			}
 		}
 	}
-
+	file.close();
 	if (t1.size() != t2.size())
 	{
 		std::cout << "size != " << '\n';
@@ -59,18 +71,22 @@ void verify(T1& t1, T2& t2 /*标准容器*/)
 	auto t2Itor = t2.begin();
 	for (; t1Itor != t1.end(); t1Itor++, t2Itor++)
 	{
-		if (*t1Itor != *t2Itor)
+		decltype(*t1Itor) value1 = *t1Itor;
+		decltype(*t2Itor) value2 = *t2Itor;
+		if (value1 != value2)
 		{
 			std::cout << "Value != ; " << '\n';
 		}
 	}
 
-	std::cout << "Verification complete!" << '\n';
+	std::cout << "Verification complete! Size:" << size << '\n';
 
 	auto end = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double> elapsed = end - start;
 
 	std::cout << "Verification time: " << elapsed.count() << std::endl;
+
+	std::cout << " ---- fun end ---- \n" << std::endl;
 }
 
 
@@ -79,11 +95,34 @@ int main()
 	using namespace MContainer;
 
 
-	/*Vector<int> v1;
-	QVector<int> v2;*/
+	List<int> v1;
+	QList<int> v2;
 
-	//verify(v1, v2);
+	/*v1.append(1);
+	v1.append(2);
+	v1.append(3);
+	v1.append(4);
+	v1.insert(4, 5);
+	v1.append(0);
 
+	v2.append(1);
+	v2.append(2);
+	v2.append(3);
+	v2.append(4);
+	v2.insert(4, 5);
+	v2.append(0);
+	for (size_t i = 0; i < v1.size(); i++)
+	{
+		std::cout << v1.at(i) << ":" << v2.at(i) << '\n';
+
+	}*/
+	
+	for (size_t i = 0; i < 5; i++)
+	{
+		v1.clear();
+		v2.clear();
+		verify(v1, v2, 0xFFFF);
+	}
 
 	return 0;
 }
