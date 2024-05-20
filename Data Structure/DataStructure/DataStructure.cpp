@@ -31,7 +31,7 @@ void verify(T1& t1, T2& t2 /*±ê×¼ÈÝÆ÷*/, int seed = 0xFFFFFF)
 	QTextStream stream(&file);
 	
 	std::mt19937 rng(std::random_device{}());
-	std::uniform_int_distribution<int> dist(0, seed);
+	std::uniform_int_distribution<int> dist(seed / 2, seed);
 
 	int size = dist(rng);
 	for (size_t i = 0; i < size; i++)
@@ -94,10 +94,21 @@ int main()
 {
 	using namespace MContainer;
 
+	Vector<int> v1, v2;
+	v1.append(1);
+	v1.append(2);
+	v1.append(3);
+	v1.append(4);
+	v1.insert(4, 5);
+	v1.append(0);
 
-	List<int> v1;
-	QList<int> v2;
+	v2 = v1;
 
+	for (size_t i = 0; i < v2.size(); i++)
+	{
+		std::cout << v2.at(i) << '\n';
+
+	}
 	/*v1.append(1);
 	v1.append(2);
 	v1.append(3);
@@ -117,13 +128,16 @@ int main()
 
 	}*/
 	
+
+	/*List<int> v1;
+	QList<int> v2;
 	for (size_t i = 0; i < 5; i++)
 	{
 		v1.clear();
 		v2.clear();
-		verify(v1, v2, 0xFFFF);
+		verify(v1, v2, 500000);
 	}
-
+*/
 	return 0;
 }
 

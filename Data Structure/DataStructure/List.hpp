@@ -511,7 +511,261 @@ namespace MContainer
 		StaticList& operator= (StaticList&& t)noexcept;
 
 		~StaticList();
+
+		StaticList& append(const T& t)noexcept;
+		StaticList& removeAt(uint pos)noexcept;
+		StaticList& removeAt(uint pos, uint len)noexcept;
+		StaticList& insert(uint pos, const T& t)noexcept;
+		const T& at(uint pos)const;
+		void clear()noexcept;
+		StaticList& removeOne(const T& t, uint pos = 0, bool onlyOne = true)noexcept;
+		uint size()const noexcept { return m_size; };
+		void swap(uint first, uint second)noexcept;
+		bool isEmpty()const noexcept { return m_size; }
+	private:
+		uint m_maxSize = 0xFFFF;
+
+		uint m_size;
+		uint m_step;
+		uint m_capacity;
+
+		static constexpr unsigned short m_stepUint = 10;
+
+		template<typename T>
+		struct Node
+		{
+			T data;
+			int next = m_npos;
+			int previous = m_npos;
+		};
+		using NodeT = Node<T>;
+
+		NodeT * m_head; //头结点的previous为尾部数据节点下标，尾节点的next为下一个可用的下标
+
+		void _throw(bool v)const
+		{
+			if (v)
+				throw std::out_of_range("StaticList request out of range");
+		}
+		void creatMemory()
+		{
+			NodeT * node = new NodeT[m_capacity];
+			std::memcpy(node, m_head, NodeSize);
+			delete[]m_head;
+			m_head = node;
+		}
 	};
+#define NodeSize sizeof(NodeT) * m_size
+	template<typename T>
+	MContainer::StaticList<T>::StaticList() noexcept
+	{
+		m_size = 0;
+		m_step = m_stepUint;
+		m_capacity = m_step;
+
+		m_head = new NodeT[m_capacity];
+	}
+
+	template<typename T>
+	MContainer::StaticList<T>::StaticList(const StaticList& t) noexcept
+	{
+		m_size = t.m_size;
+		m_step = t.m_step;
+		m_capacity = t.m_capacity;
+
+		m_head = new NodeT[m_capacity];
+
+		std::memcpy(m_head, t.m_head, NodeSize);
+
+	}
+
+	template<typename T>
+	MContainer::StaticList<T>::StaticList(StaticList&& t) noexcept
+	{
+		m_size = t.m_size;
+		m_step = t.m_step;
+		m_capacity = t.m_capacity;
+		m_head = t.m_head;
+
+		t.m_head = nullptr;
+		t.m_size = 0;
+		t.m_capacity = 0;
+		t.m_step = m_stepUint;
+	}
+
+	template<typename T>
+	StaticList<T>& MContainer::StaticList<T>::operator=(const StaticList& t) noexcept
+	{
+		m_size = t.m_size;
+		m_step = t.m_step;
+		m_capacity = t.m_capacity;
+
+		m_head = new NodeT[m_capacity];
+
+		std::memcpy(m_head, t.m_head, NodeSize);
+	}
+
+	template<typename T>
+	StaticList<T>& MContainer::StaticList<T>::operator=(StaticList&& t) noexcept
+	{
+		m_size = t.m_size;
+		m_step = t.m_step;
+		m_capacity = t.m_capacity;
+		m_head = t.m_head;
+
+		t.m_head = nullptr;
+		t.m_size = 0;
+		t.m_capacity = 0;
+		t.m_step = m_stepUint;
+	}
+
+	template<typename T>
+	MContainer::StaticList<T>::~StaticList()
+	{
+		delete[]m_head;
+	}
+
+	template<typename T>
+	StaticList<T>& MContainer::StaticList<T>::append(const T& t) noexcept
+	{
+		assert(m_capacity <= m_maxSize);
+		NodeT* newNode = nullptr;
+		if (m_size == 0)
+		{
+			newNode = m_head[1];
+			newNode->data = t;
+			newNode->next = 2;
+			newNode->previous = 1;
+			m_head->next = 1;
+			m_head->previous = 1;
+		}
+		else
+		{
+			NodeT* tailNode = m_head[m_head->previous];
+			newNode = m_head[tailNode->next];
+			newNode->data = t;
+			newNode->previous = m_head->previous;
+			m_head->previous = tailNode->next;
+		}
+		m_size++;
+		if (m_size >= m_capacity)
+		{
+			if (m_capacity + m_step >= m_maxSize)
+				m_capacity = m_maxSize;
+			else
+				m_capacity += m_step;
+			creatMemory();
+		}
+
+		for (uint i = 1; i < m_capacity; i++)
+		{
+			if (m_head[i]->previous == m_npos)
+			{
+				newNode->next = i;
+				break;
+			}
+		}
+		return*this;
+	}
+
+	template<typename T>
+	StaticList<T>& MContainer::StaticList<T>::removeAt(uint pos) noexcept
+	{
+		if (pos >= m_size)
+			return *this;
+
+		//if (pos == 0)
+		//{
+		//	NodeT * node = m_head[m_head->next];
+		//	if (node->next != m_nPos)
+		//	{
+		//		m_head->next = node->next;
+		//		m_head[node->next]->previous = 0;
+		//	}
+		//	node->next = m_nPos;
+		//	node->previous = m_nPos;
+		//}
+		if (pos == m_size - 1)
+		{
+			NodeT* tail = m_head[m_head->previous];
+			m_head[tail->previous]->next = m_nPos;
+			m_head->previous = tail->previous;
+			tail->previous = m_nPos;
+		}
+		else
+		{
+
+		}
+		m_size--;
+		return *this;
+	}
+
+	template<typename T>
+	StaticList<T>& MContainer::StaticList<T>::removeAt(uint pos, uint len) noexcept
+	{
+
+	}
+
+	template<typename T>
+	StaticList<T>& MContainer::StaticList<T>::insert(uint pos, const T& t) noexcept
+	{
+
+	}
+
+	template<typename T>
+	const T& MContainer::StaticList<T>::at(uint pos) const
+	{
+		_throw(pos >= m_size);
+		int index = m_head->next;
+		for (size_t i = 0; i <= pos; i++)
+		{
+			index = m_head[index]->next;
+		}
+
+		return m_head[index]->data;
+	}
+
+	template<typename T>
+	void MContainer::StaticList<T>::clear() noexcept
+	{
+		m_size = 0;
+		m_step = m_stepUint;
+		m_capacity = m_step;
+		delete[]m_head;
+		m_head = new NodeT[m_capacity];
+	}
+
+	template<typename T>
+	StaticList<T>& MContainer::StaticList<T>::removeOne(const T& t, uint pos /*= 0*/, bool onlyOne /*= true*/) noexcept
+	{
+
+	}
+
+	template<typename T>
+	void MContainer::StaticList<T>::swap(uint first, uint second) noexcept
+	{
+		_throw(first >= m_size);
+		_throw(second >= m_size);
+
+		if (first == second)
+			return;
+
+		int  lNode, rNode;
+		int index = m_head->next;
+		for (uint i = 0; i <= first || i <= second; i++)
+		{
+			if (i == first)
+				lNode = i;
+			if (i == second)
+				rNode = i;
+			index = m_head[index]->next;
+		}
+
+		T t = m_head[lNode]->data;
+		m_head[lNode]->data = m_head[rNode]->data;
+		m_head[rNode]->data = t;
+	}
+
 }
 
 

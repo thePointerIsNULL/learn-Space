@@ -12,7 +12,7 @@ namespace MContainer
 		ContainerBase() = default;
 		~ContainerBase() = default;
 		static const uint m_maxSize = 0xFF000000;
-		static constexpr size_t m_npos = -1;
+		static constexpr int m_npos = -1;
 	};
 }
 
