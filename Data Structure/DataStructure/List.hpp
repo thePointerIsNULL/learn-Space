@@ -497,7 +497,7 @@ namespace MContainer
 		return{};
 	}
 
-
+#define NodeSize sizeof(NodeT) * m_size
 	template<typename T>
 	class StaticList :public ContainerBase
 	{
@@ -540,22 +540,63 @@ namespace MContainer
 		};
 		using NodeT = Node<T>;
 
-		NodeT * m_head; //头结点的previous为尾部数据节点下标，尾节点的next为下一个可用的下标
+		NodeT * m_head; //头结点的previous为尾部数据节点下标
 
 		void _throw(bool v)const
 		{
 			if (v)
 				throw std::out_of_range("StaticList request out of range");
 		}
-		void creatMemory()
+		void creatMemory()noexcept
 		{
 			NodeT * node = new NodeT[m_capacity];
 			std::memcpy(node, m_head, NodeSize);
 			delete[]m_head;
 			m_head = node;
 		}
+		int findNodeIndex(uint pos)const noexcept
+		{
+			if (pos >= m_size)
+				return m_npos;
+			int findIndex = m_head->next;
+			bool nextMove = true;
+			int index = 0;
+			if (pos > m_size / 2)
+			{
+				findIndex = m_head->previous;
+				nextMove = false;
+				index = m_size - 1;
+			}
+
+			while (index >= 0)
+			{
+				if (index == pos)
+					break;
+				if (nextMove)
+				{
+					findIndex = m_head[findIndex].next;
+					index++;
+				}
+				else
+				{
+					findIndex = m_head[findIndex].previous;
+					index--;
+				}
+
+			}
+			return findIndex;
+		}
+
+		int getFreeIndex()
+		{
+			for (uint i = 1; i < m_capacity; i++)
+			{
+				if (m_head[i].previous == m_npos)
+					return i;
+			}
+			return m_npos;
+		}
 	};
-#define NodeSize sizeof(NodeT) * m_size
 	template<typename T>
 	MContainer::StaticList<T>::StaticList() noexcept
 	{
@@ -632,7 +673,7 @@ namespace MContainer
 		NodeT* newNode = nullptr;
 		if (m_size == 0)
 		{
-			newNode = m_head[1];
+			newNode = &m_head[1];
 			newNode->data = t;
 			newNode->next = 2;
 			newNode->previous = 1;
@@ -641,11 +682,15 @@ namespace MContainer
 		}
 		else
 		{
-			NodeT* tailNode = m_head[m_head->previous];
-			newNode = m_head[tailNode->next];
+			NodeT* tailNode = &m_head[m_head->previous];
+
+			int newIndex = getFreeIndex();
+			newNode = &m_head[newIndex];
 			newNode->data = t;
 			newNode->previous = m_head->previous;
-			m_head->previous = tailNode->next;
+			tailNode->next = newIndex;
+
+			m_head->previous = newIndex;
 		}
 		m_size++;
 		if (m_size >= m_capacity)
@@ -657,14 +702,6 @@ namespace MContainer
 			creatMemory();
 		}
 
-		for (uint i = 1; i < m_capacity; i++)
-		{
-			if (m_head[i]->previous == m_npos)
-			{
-				newNode->next = i;
-				break;
-			}
-		}
 		return*this;
 	}
 
@@ -674,28 +711,27 @@ namespace MContainer
 		if (pos >= m_size)
 			return *this;
 
-		//if (pos == 0)
-		//{
-		//	NodeT * node = m_head[m_head->next];
-		//	if (node->next != m_nPos)
-		//	{
-		//		m_head->next = node->next;
-		//		m_head[node->next]->previous = 0;
-		//	}
-		//	node->next = m_nPos;
-		//	node->previous = m_nPos;
-		//}
 		if (pos == m_size - 1)
 		{
-			NodeT* tail = m_head[m_head->previous];
-			m_head[tail->previous]->next = m_nPos;
-			m_head->previous = tail->previous;
-			tail->previous = m_nPos;
+			NodeT* tail = &m_head[m_head->previous];
+			m_head[tail->previous].next = m_npos;
+
+			if (tail->previous == 0)
+				m_head->previous = m_npos;
+			else
+				m_head->previous = tail->previous;
+
+			tail->previous = m_npos;
 		}
 		else
 		{
-
+			int  index = findNodeIndex(pos);
+			int previousIndex = m_head[index].previous;
+			int next = m_head[index].next;
+			m_head[previousIndex].next = next;
+			m_head[next].previous = previousIndex;
 		}
+
 		m_size--;
 		return *this;
 	}
@@ -703,26 +739,91 @@ namespace MContainer
 	template<typename T>
 	StaticList<T>& MContainer::StaticList<T>::removeAt(uint pos, uint len) noexcept
 	{
+		if (pos >= m_size)
+			return *this;
+		if (len == 1)
+			return removeAt(pos);
+
+		if (pos + len >= m_size)
+			len = m_size - pos;
+
+		int index = findNodeIndex(pos);
+
+		if (pos + len == m_size)
+		{
+			clear();
+			return *this;
+		}
+		int endIndex = index;
+		for (uint i = 0; i < len; i++)
+		{
+			endIndex = m_head[endIndex].next;
+		}
+
+
+		int preIndex = m_head[index].previous;
+		int nextIndex = m_head[endIndex].next;
+		m_head[preIndex].next = m_head[endIndex].next;
+		if (nextIndex == m_npos)
+			m_head->previous = preIndex;
+		else
+			m_head[nextIndex].previous = preIndex;
+
+		m_size -= len;
+
+		for (uint i = 0; i < len; i++)
+		{
+			NodeT* node = &m_head[index];
+			index = node->next;
+			node->previous = m_npos;
+			node->next = m_npos;
+		}
+
+		return *this;
 
 	}
 
 	template<typename T>
 	StaticList<T>& MContainer::StaticList<T>::insert(uint pos, const T& t) noexcept
 	{
+		if (pos > m_size)
+			return *this;
 
+		if (pos == m_size)
+			return append(t);
+
+		int index = findNodeIndex(pos);
+		int previous = m_head[index].previous;
+
+		int newIndex = getFreeIndex();
+
+		NodeT * newNode = &m_head[newIndex];
+		newNode->data = t;
+
+		m_head[previous].next = newIndex;
+		newNode->next = index;
+
+		newNode->previous = previous;
+		m_head[index].previous = index;
+
+		m_size++;
+		if (m_size >= m_capacity)
+		{
+			if (m_capacity + m_step >= m_maxSize)
+				m_capacity = m_maxSize;
+			else
+				m_capacity += m_step;
+			creatMemory();
+		}
+		return *this;
 	}
 
 	template<typename T>
 	const T& MContainer::StaticList<T>::at(uint pos) const
 	{
 		_throw(pos >= m_size);
-		int index = m_head->next;
-		for (size_t i = 0; i <= pos; i++)
-		{
-			index = m_head[index]->next;
-		}
-
-		return m_head[index]->data;
+		int index = findNodeIndex(pos);
+		return m_head[index].data;
 	}
 
 	template<typename T>
@@ -738,7 +839,22 @@ namespace MContainer
 	template<typename T>
 	StaticList<T>& MContainer::StaticList<T>::removeOne(const T& t, uint pos /*= 0*/, bool onlyOne /*= true*/) noexcept
 	{
+		if (pos >= m_size)
+			return *this;
+		int index = m_head->next;
+		for (uint i = 0; i < m_size; i++, index = m_head[index]->next)
+		{
+			if (pos < i)
+				continue;
 
+			if (m_head[index]->data == t)
+			{
+				removeAt(i);
+				if (onlyOne)
+					break;
+			}
+		}
+		return *this;
 	}
 
 	template<typename T>

@@ -94,7 +94,25 @@ int main()
 {
 	using namespace MContainer;
 
-	Vector<int> v1, v2;
+	StaticList<int> list;
+	list.append(1);
+	list.append(2);
+	list.append(3);
+	list.append(4);
+	list.append(5);
+	list.append(6);
+	list.insert(4, 100);
+	list.append(0);
+
+	list.removeAt(1, 2);
+	for (size_t i = 0; i < list.size(); i++)
+	{
+		std::cout << list.at(i) << '\n';
+
+	}
+
+
+	/*Vector<int> v1, v2;
 	v1.append(1);
 	v1.append(2);
 	v1.append(3);
@@ -108,7 +126,7 @@ int main()
 	{
 		std::cout << v2.at(i) << '\n';
 
-	}
+	}*/
 	/*v1.append(1);
 	v1.append(2);
 	v1.append(3);
