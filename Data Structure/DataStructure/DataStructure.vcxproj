@@ -155,11 +155,13 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DataStructure.cpp" />
+    <ClCompile Include="Queue.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="container.h" />
     <ClInclude Include="containerBase.h" />
     <ClInclude Include="List.hpp" />
+    <ClInclude Include="Stack.hpp" />
     <ClInclude Include="Vector.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

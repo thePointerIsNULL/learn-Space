@@ -10,6 +10,8 @@
 #include <QtCore/QList>
 #include <QtCore/QFile>
 #include <QtCore/QTextStream>
+#include "Stack.hpp"
+#include "Queue.hpp"
 
 class A
 {
@@ -29,7 +31,7 @@ void verify(T1& t1, T2& t2 /*±ê×¼ÈÝÆ÷*/, int seed = 0xFFFFFF)
 	QFile file("D:/verify output.txt");
 	file.open(QIODevice::WriteOnly);
 	QTextStream stream(&file);
-	
+
 	std::mt19937 rng(std::random_device{}());
 	std::uniform_int_distribution<int> dist(seed / 2, seed);
 
@@ -94,22 +96,57 @@ int main()
 {
 	using namespace MContainer;
 
-	StaticList<int> list;
-	list.append(1);
-	list.append(2);
-	list.append(3);
-	list.append(4);
-	list.append(5);
-	list.append(6);
-	list.insert(4, 100);
-	list.append(0);
 
-	list.removeAt(1, 2);
-	for (size_t i = 0; i < list.size(); i++)
+	SQueue<int> v1;
+
+	/*v1.pushBack(1);
+	v1.pushBack(2);
+	v1.pushFront(0);
+	v1.pushBack(-1);
+	*/
+	v1.enqueue(1);
+	v1.enqueue(2);
+	v1.enqueue(3);
+	v1.enqueue(4);
+	while (!v1.isEmpty())
 	{
-		std::cout << list.at(i) << '\n';
-
+		std::cout << v1.dequeue() << '\n';
 	}
+
+	/*Stack<int> v1;
+
+	v1.push(1);
+	v1.push(2);
+	v1.push(3);
+	v1.push(4);
+	v1.push(5);
+	v1.pop();
+	v1.pop();
+	v1.pop();
+	v1.push(3);
+	v1.push(4);
+
+	while (!v1.isEmpty())
+	{
+		std::cout << v1.pop() << '\n';
+	}*/
+
+	//StaticList<int> list;
+	//list.append(1);
+	//list.append(2);
+	//list.append(3);
+	//list.append(4);
+	//list.append(5);
+	//list.append(6);
+	//list.insert(4, 100);
+	//list.append(0);
+
+	//list.removeAt(1, 2);
+	//for (size_t i = 0; i < list.size(); i++)
+	//{
+	//	std::cout << list.at(i) << '\n';
+
+	//}
 
 
 	/*Vector<int> v1, v2;
@@ -145,7 +182,7 @@ int main()
 		std::cout << v1.at(i) << ":" << v2.at(i) << '\n';
 
 	}*/
-	
+
 
 	/*List<int> v1;
 	QList<int> v2;

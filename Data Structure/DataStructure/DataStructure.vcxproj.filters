@@ -21,6 +21,9 @@
     <ClCompile Include="DataStructure.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="Queue.hpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="container.h">
@@ -29,11 +32,14 @@
     <ClInclude Include="containerBase.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="Vector.hpp">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="List.hpp">
-      <Filter>头文件</Filter>
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Vector.hpp">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Stack.hpp">
+      <Filter>源文件</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

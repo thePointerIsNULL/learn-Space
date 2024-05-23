@@ -16,7 +16,7 @@ namespace MContainer
 
 
 	template<typename T >
-	class Vector final :public ContainerBase
+	class Vector :public ContainerBase
 	{
 	public:
 		explicit Vector()noexcept;
