@@ -162,6 +162,7 @@
     <ClInclude Include="containerBase.h" />
     <ClInclude Include="List.hpp" />
     <ClInclude Include="Stack.hpp" />
+    <ClInclude Include="Tree.hpp" />
     <ClInclude Include="Vector.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

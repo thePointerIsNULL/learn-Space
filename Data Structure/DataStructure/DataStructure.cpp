@@ -12,7 +12,7 @@
 #include <QtCore/QTextStream>
 #include "Stack.hpp"
 #include "Queue.hpp"
-
+#include "Tree.hpp"
 class A
 {
 public:
