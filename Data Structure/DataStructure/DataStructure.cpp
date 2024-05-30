@@ -112,7 +112,7 @@ int main()
 	{
 		std::cout << v1.dequeue() << '\n';
 	}
-
+	
 	/*Stack<int> v1;
 
 	v1.push(1);
