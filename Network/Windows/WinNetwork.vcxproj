@@ -128,8 +128,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="network.cpp" />
     <ClCompile Include="select.cpp" />
     <ClCompile Include="WinNetwork.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="network.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

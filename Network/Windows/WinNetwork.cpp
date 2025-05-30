@@ -5,10 +5,13 @@
 #include <WinSock2.h>
 #include <ws2tcpip.h>
 #include <vector>
-
+#include "network.h"
+using namespace CMCode;
 
 int main()
 {
+	CMByteArray byeArray("1213131");
+
 	WSADATA wsaData;
 	int ret = WSAStartup(MAKEWORD(2, 2), &wsaData);
 	if (ret != 0)
