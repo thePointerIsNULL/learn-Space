@@ -10,20 +10,121 @@ using namespace CMCode;
 
 int main()
 {
-	CMByteArray byeArray("1213131");
-
 	WSADATA wsaData;
-	int ret = WSAStartup(MAKEWORD(2, 2), &wsaData);
+	WSAStartup(MAKEWORD(2, 2), &wsaData);
+
+	{
+		CMTcpServer tcpServer;
+		tcpServer.bind(CMHostAddress::LocalHost, 9999);
+		if (!tcpServer.listen())
+		{
+			std::cerr << tcpServer.getLastError() << '\n';
+			return -1;
+		}
+
+		std::vector<CMTcpSocketPtr> clientSockets;
+
+		while (true)
+		{
+			CMTcpSocketPtr clientSocket = tcpServer.accept();
+			if (clientSocket != nullptr)
+			{
+				clientSockets.push_back(clientSocket);
+			}
+
+
+			for (int i = clientSockets.size() - 1; i >= 0; i--)
+			{
+				CMTcpSocketPtr& socket = clientSockets[i];
+				if (!socket->isValidSocket())
+				{
+					clientSockets.erase(clientSockets.begin() + i);
+					continue;
+				}
+				CMByteArray msgByte = socket->readAll();
+				if (msgByte.isEmpty())
+				{
+					continue;
+				}
+				msgByte.insert(0, "revc:");
+				socket->sendAll(msgByte);
+			}
+
+			Sleep(1);
+		}
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	return 0;
+
+
+	/*WSADATA wsaData;
+	ret = WSAStartup(MAKEWORD(2, 2), &wsaData);
 	if (ret != 0)
 	{
 		std::cerr << "WSAStartup Error" << "\n";
 		return -1;
+	}*/
+
+	CMHostAddress hostAddr = CMHostAddress::fromHostName("www.14997.com");
+	if (!hostAddr.isNull())
+	{
+		std::cout << hostAddr.toString() << '\n';
 	}
+
+	CMHostAddress  aaaa("127.0.0.1");
+	std::cout << aaaa.toString() << '\n';
+
+
+	CMByteArray a;
+	{
+		CMByteArray byeArray("1213131");
+
+		a = byeArray;
+
+		a.append("oooo");
+
+		const char* str = nullptr;
+		uint len = 0;
+		a.data(str, len);
+		std::cout << str;
+
+		CMByteArray b(byeArray);
+	}
+
+	/*const char* str = nullptr;
+	int len = 0;
+	a.data(str, len);
+	std::cout << str;*/
+
+
 
 	SOCKET listenSocket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, 0, NULL, 0);
 	if (listenSocket == INVALID_SOCKET)
 	{
 		std::cerr << "WSASocket:" << WSAGetLastError();
+		return -1;
+	}
+	u_long data = 1;
+	if (ioctlsocket(listenSocket, FIONBIO, &data) == SOCKET_ERROR)
+	{
+		std::cerr << "ioctlsocket:" << WSAGetLastError();
 		return -1;
 	}
 
@@ -36,18 +137,13 @@ int main()
 		return -1;
 	}
 
-	ret = ::bind(listenSocket, reinterpret_cast<sockaddr*>(&addr), sizeof(sockaddr));
+	int ret = ::bind(listenSocket, reinterpret_cast<sockaddr*>(&addr), sizeof(sockaddr));
 	if (ret == SOCKET_ERROR)
 	{
 		std::cerr << "bind:" << WSAGetLastError();
 		return -1;
 	}
-	u_long data = 1;
-	if (ioctlsocket(listenSocket, FIONBIO, &data) == SOCKET_ERROR)
-	{
-		std::cerr << "ioctlsocket:" << WSAGetLastError();
-		return -1;
-	}
+	
 
 	::listen(listenSocket, SOMAXCONN);
 
@@ -56,22 +152,22 @@ int main()
 	std::vector<SOCKET> clientVec;
 	while (true)
 	{
-		fd_set readSet{};
-		FD_ZERO(&readSet);
+		//fd_set readSet{};
+		//FD_ZERO(&readSet);
 
-		FD_SET(listenSocket, &readSet);
+		//FD_SET(listenSocket, &readSet);
 
-		for (size_t i = 0; i < clientVec.size(); i++)
-		{
-			FD_SET(clientVec[i], &readSet);
-		}
+		//for (size_t i = 0; i < clientVec.size(); i++)
+		//{
+		//	FD_SET(clientVec[i], &readSet);
+		//}
 
-		//timeval timeout{ 0,100 };
+		////timeval timeout{ 0,100 };
 
-		select(1, &readSet, nullptr, nullptr, nullptr);
+		//select(1, &readSet, nullptr, nullptr, nullptr);
 
 		//有新连接
-		if (FD_ISSET(listenSocket, &readSet))
+		//if (FD_ISSET(listenSocket, &readSet))
 		{
 			SOCKET clientSokcet = accept(listenSocket, nullptr, nullptr);
 			if (clientSokcet != INVALID_SOCKET)
@@ -82,7 +178,7 @@ int main()
 			}
 		}
 
-		for (int i = clientVec.size() - 1; i >= 0; i--)
+		/*for (int i = clientVec.size() - 1; i >= 0; i--)
 		{
 			SOCKET clientSocket = clientVec[i];
 			if (FD_ISSET(clientSocket, &readSet))
@@ -113,7 +209,7 @@ int main()
 					}
 				}
 			}
-		}
+		}*/
 
 	}
 
