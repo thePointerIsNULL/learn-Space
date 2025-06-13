@@ -4,6 +4,7 @@
 #include <ws2tcpip.h>
 #include <string>
 #include <memory>
+#include <map>
 
 namespace CMCode
 {
@@ -86,6 +87,7 @@ namespace CMCode
 		bool isValidSocket()const;
 		void close();
 		std::string getLastError();
+		SOCKET getSocket()const;
 	protected:
 		CMSocket();
 		virtual ~CMSocket();
@@ -123,4 +125,38 @@ namespace CMCode
 		bool listen();
 		CMTcpSocketPtr accept(ulong timeout = 0);
 	};
+
+	class CMSelect
+	{
+	public:
+		enum class EventType
+		{
+			None = 0,
+			ReadEvent = 1,
+			WriteEvent = 1 << 1,
+			ExceptEvent = 1 << 2
+		};
+		friend constexpr CMSelect::EventType operator|(CMSelect::EventType a, CMSelect::EventType b);
+		friend constexpr CMSelect::EventType operator&(CMSelect::EventType a, CMSelect::EventType b);
+		friend constexpr CMSelect::EventType operator~(CMSelect::EventType a);
+
+		using MonitorMap = std::map<CMSocket*, EventType>;
+
+		bool doRun(uint* timeoutMicroseconds = nullptr);
+		void setMonitorMap(const MonitorMap& map);
+		void updateSocketEvent(CMSocket* socket, EventType eventType);//Auto join the new socket
+		void removeSocket(CMSocket* socket);
+		void getResult(MonitorMap& resultMap)const;
+		EventType getSocketType(CMSocket* socket)const;
+		std::pair<int, std::string> getError();
+	protected:
+
+	private:
+		MonitorMap  m_recordMap;
+		std::pair<int, std::string> m_error;
+		fd_set m_readSet;
+		fd_set m_writeSet;
+		fd_set m_exceptSet;
+	};
+
 }

@@ -614,6 +614,11 @@ namespace CMCode
 		return error;
 	}
 
+	SOCKET CMSocket::getSocket() const
+	{
+		return m_socket;
+	}
+
 	uint CMSocket::m_initBufferSize = 1024 * 4;
 	CMSocket::CMSocket()
 		:m_bufferSize(m_initBufferSize)
@@ -717,5 +722,9 @@ namespace CMCode
 		return true;
 	}
 
+	
+
+	
+	
 }
 
