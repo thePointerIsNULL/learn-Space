@@ -8,9 +8,9 @@ namespace CMCode
 	double CMByteArray::m_step = 1.5;
 	CMByteArray::CMByteArray()noexcept
 	{
-		m_bufferLen = 10;
-		m_buffer = new char[m_bufferLen] {0};
-		m_useCount = new int(1);
+		m_bufferLen = 0;
+		m_buffer = nullptr;
+		m_useCount.store(new int(1));
 	}
 
 	CMByteArray::CMByteArray(const char* str, uint len)noexcept
@@ -19,7 +19,7 @@ namespace CMCode
 		m_buffer = new char[m_bufferLen] {0};
 		m_size = m_bufferLen;
 		std::memcpy(m_buffer, str, m_bufferLen);
-		m_useCount = new int(1);
+		m_useCount.store(new int(1));
 	}
 
 	CMByteArray::CMByteArray(CMByteArray&& other)noexcept
@@ -27,7 +27,7 @@ namespace CMCode
 		m_bufferLen = other.m_bufferLen;
 		m_size = other.m_size;
 		m_buffer = other.m_buffer;
-		m_useCount = other.m_useCount;
+		m_useCount.store(other.m_useCount);
 		if (m_useCount != nullptr)
 		{
 			CountAdd;
@@ -39,7 +39,7 @@ namespace CMCode
 		m_bufferLen = other.m_bufferLen;
 		m_size = other.m_size;
 		m_buffer = other.m_buffer;
-		m_useCount = other.m_useCount;
+		m_useCount.store(other.m_useCount);
 		if (m_useCount != nullptr)
 		{
 			CountAdd;
@@ -56,7 +56,7 @@ namespace CMCode
 	{
 		m_bufferLen = size;
 		m_buffer = new char[m_bufferLen] {0};
-		m_useCount = new int(1);
+		m_useCount.store(new int(1));
 	}
 
 	CMByteArray::~CMByteArray()noexcept
@@ -69,7 +69,7 @@ namespace CMCode
 		m_bufferLen = other.m_bufferLen;
 		m_size = other.m_size;
 		m_buffer = other.m_buffer;
-		m_useCount = other.m_useCount;
+		m_useCount.store(other.m_useCount);
 		if (m_useCount != nullptr)
 		{
 			CountAdd;
@@ -82,7 +82,7 @@ namespace CMCode
 		m_bufferLen = other.m_bufferLen;
 		m_size = other.m_size;
 		m_buffer = other.m_buffer;
-		m_useCount = other.m_useCount;
+		m_useCount.store(other.m_useCount);
 		if (m_useCount != nullptr)
 		{
 			CountAdd;
@@ -190,7 +190,7 @@ namespace CMCode
 
 	void CMByteArray::freeMemory()
 	{
-		if (m_useCount != nullptr)
+		if (m_useCount.load() != nullptr)
 		{
 			if (*m_useCount == 1)
 			{
@@ -333,7 +333,7 @@ namespace CMCode
 	CMTcpServer::CMTcpServer()
 		:CMSocket()
 	{
-		m_socket = ::WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, 0, 0, 0);
+		m_socket = ::WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, 0, 0, WSA_FLAG_OVERLAPPED);
 		if (m_socket == INVALID_SOCKET)
 		{
 			m_error.push("Error create tcpServer socket:" + std::to_string(WSAGetLastError()));
@@ -722,9 +722,9 @@ namespace CMCode
 		return true;
 	}
 
-	
 
-	
-	
+
+
+
 }
 

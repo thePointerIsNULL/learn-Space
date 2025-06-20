@@ -125,14 +125,17 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>Ws2_32.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="iocp.cpp" />
     <ClCompile Include="network.cpp" />
     <ClCompile Include="select.cpp" />
     <ClCompile Include="WinNetwork.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="iocp.h" />
     <ClInclude Include="network.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

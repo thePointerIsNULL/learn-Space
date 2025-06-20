@@ -8,6 +8,7 @@
 #include <thread>
 #include <mswsock.h>
 #include "network.h"
+#include"iocp.h"
 using namespace CMCode;
 
 LPFN_ACCEPTEX acceptExFun = nullptr;
@@ -173,7 +174,7 @@ void workFun(void* arg)
 			recvByte.data(data, dataSize);
 			std::memcpy(sendIo->buffer.buf, data, dataSize);
 			sendIo->buffer.len = dataSize;
-			::WSASend(socketContext->socket,&sendIo->buffer,1,&trSize,flage, reinterpret_cast<OVERLAPPED*>(&sendIo->overlapped), 0);
+			::WSASend(socketContext->socket, &sendIo->buffer, 1, &trSize, flage, reinterpret_cast<OVERLAPPED*>(&sendIo->overlapped), 0);
 		}
 		break;
 		case IOMode::Write:
@@ -185,7 +186,7 @@ void workFun(void* arg)
 			freeIOContext(ioContext);
 			delete ioContext;
 		}
-			break;
+		break;
 		default:
 			break;
 		}
@@ -198,6 +199,52 @@ int main()
 	WSAStartup(MAKEWORD(2, 2), &wsaData);
 
 
+	CMIOCP iocp;
+
+	/*CMTcpServer tcpServer;
+	tcpServer.bind(CMHostAddress::LocalHost, 9999);
+	tcpServer.listen();*/
+	char recv[] = "ERROR";
+	CMIOCP::IOResultFun resultFun = [&](CMIOCP::IOResult* result)
+		{
+			if (result == nullptr)
+			{
+				return;
+			}
+
+			switch (result->ioMode)
+			{
+			case CMIOCP::IOMode::Accept:
+			{
+				std::cout << "accept\n";
+			}
+			break;
+			case CMIOCP::IOMode::Read:
+			{
+				//CMByteArray msg = result->msg;
+				//msg.insert(0, "recv:");
+				iocp.send(result->socket, recv);
+			}
+			break;
+			case CMIOCP::IOMode::Write:
+			{
+
+			}
+			break;
+			default:
+				break;
+			}
+
+
+
+		};
+	iocp.startIocp(CMHostAddress::LocalHost, 9999, resultFun, 0);
+
+
+	std::cout << "enter any close";
+	std::cin.get();
+	iocp.close();
+	return 0;
 	//IOCP
 	/*SYSTEM_INFO systemInfor{};
 	::GetSystemInfo(&systemInfor);

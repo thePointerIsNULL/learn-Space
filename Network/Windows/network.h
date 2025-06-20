@@ -5,6 +5,8 @@
 #include <string>
 #include <memory>
 #include <map>
+#include <atomic>
+
 
 namespace CMCode
 {
@@ -44,7 +46,7 @@ namespace CMCode
 		char* m_buffer = nullptr;
 		uint m_bufferLen = 0;
 		uint m_size = 0;
-		int* m_useCount = nullptr;
+		std::atomic<int*> m_useCount;
 
 		static double m_step;
 	};
@@ -73,7 +75,7 @@ namespace CMCode
 	private:
 		uint m_ip;
 	};
-
+	class CMIOCP;
 	class CMSocket
 	{
 	public:
@@ -99,6 +101,7 @@ namespace CMCode
 		uint m_bufferSize;
 
 		static uint m_initBufferSize;
+		friend CMIOCP;
 	};
 	class CMTcpServer;
 	class CMTcpSocket final :public CMSocket
