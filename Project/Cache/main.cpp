@@ -21,12 +21,13 @@ void createData(int size, std::vector<std::pair<int, std::string>>& dataVector)
 int main(int argc, char** argv)
 {
 	std::vector<std::pair<int, std::string>> dataVector;
-	createData(500, dataVector);
+	int range = 3000;
+	createData(range, dataVector);
 
 
 	std::random_device rd;
 	std::mt19937 gen(rd());
-	std::uniform_int_distribution<> dis(0, 500);
+	std::uniform_int_distribution<> dis(0, range);
 
 
 	int size = 100000;
