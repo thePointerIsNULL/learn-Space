@@ -13,6 +13,7 @@
 #include "Stack.hpp"
 #include "Queue.hpp"
 #include "Tree.hpp"
+#include "SpinLock.hpp"
 class A
 {
 public:
@@ -91,9 +92,45 @@ void verify(T1& t1, T2& t2 /*±ê×¼ÈÝÆ÷*/, int seed = 0xFFFFFF)
 	std::cout << " ---- fun end ---- \n" << std::endl;
 }
 
+struct Arg
+{
+	SpinLock* locker = nullptr;
+	int* retSum = nullptr;
+};
+
+
+void add(Arg* arg)
+{
+	for (size_t i = 0; i < 100000; i++)
+	{
+		arg->locker->lock();
+		(*arg->retSum)++;
+		arg->locker->unlock();
+	}
+}
 
 int main()
 {
+	int sum = 0;
+	SpinLock lock;
+	Arg arg;
+	arg.locker = &lock;
+	arg.retSum = &sum;
+
+	std::vector<std::thread> threadVec;
+	for (size_t i = 0; i < 8; i++)
+	{
+		threadVec.emplace_back(std::thread(&add, &arg));
+	}
+
+	for (size_t i = 0; i < threadVec.size(); i++)
+	{
+		threadVec[i].join();
+	}
+
+	std::cout << sum;
+
+	return 0;
 	using namespace MContainer;
 
 

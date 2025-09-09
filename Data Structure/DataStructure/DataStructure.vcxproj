@@ -161,6 +161,7 @@
     <ClInclude Include="container.h" />
     <ClInclude Include="containerBase.h" />
     <ClInclude Include="List.hpp" />
+    <ClInclude Include="SpinLock.hpp" />
     <ClInclude Include="Stack.hpp" />
     <ClInclude Include="Tree.hpp" />
     <ClInclude Include="Vector.hpp" />
