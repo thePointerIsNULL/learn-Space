@@ -76,9 +76,13 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
   <ItemGroup>
+    <ClCompile Include="CMByteArray.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="TcpServer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CMByteArray.h" />
+    <ClInclude Include="TcpServer.h" />
   </ItemGroup>
   <ItemDefinitionGroup />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
