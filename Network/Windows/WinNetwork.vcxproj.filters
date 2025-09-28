@@ -27,12 +27,18 @@
     <ClCompile Include="iocp.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="CMByteArray.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="network.h">
       <Filter>源文件</Filter>
     </ClInclude>
     <ClInclude Include="iocp.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="CMByteArray.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

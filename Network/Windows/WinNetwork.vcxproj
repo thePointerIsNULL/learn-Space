@@ -129,12 +129,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="CMByteArray.cpp" />
     <ClCompile Include="iocp.cpp" />
     <ClCompile Include="network.cpp" />
     <ClCompile Include="select.cpp" />
     <ClCompile Include="WinNetwork.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CMByteArray.h" />
     <ClInclude Include="iocp.h" />
     <ClInclude Include="network.h" />
   </ItemGroup>
