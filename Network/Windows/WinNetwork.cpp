@@ -7,406 +7,404 @@
 #include <vector>
 #include <thread>
 #include <mswsock.h>
+#include "CMByteArray.h"
 #include "network.h"
 #include"iocp.h"
-using namespace CMCode;
+//using namespace CMCode;
 
 LPFN_ACCEPTEX acceptExFun = nullptr;
 LPFN_GETACCEPTEXSOCKADDRS getClntAddrFun = nullptr;
 
-enum class IOMode
-{
-	None,
-	Read,
-	Write,
-	Accept
-};
-
-struct IOContext
-{
-	OVERLAPPED overlapped{};
-	WSABUF buffer;
-	ulong bufferDefSize = 10240;
-	ulong vaildSize = 0;//表示buffer中实际的数据大小，accept事件时没有意义
-	IOMode mode = IOMode::None;
-	SOCKET socket;
-};
-
-void initIOContext(IOContext* iOContext)
-{
-	iOContext->buffer.buf = new CHAR[iOContext->bufferDefSize];
-	iOContext->buffer.len = iOContext->bufferDefSize;
-}
-
-void freeIOContext(IOContext* iOContext)
-{
-	delete[]iOContext->buffer.buf;
-	iOContext->buffer.buf = nullptr;
-}
-
-struct SocketContext
-{
-	SOCKET socket = INVALID_SOCKET;
-	sockaddr_in socketAddr{};
-};
-
-
-void workFun(void* arg)
-{
-	HANDLE ioObj = reinterpret_cast<HANDLE>(arg);
-	SocketContext* socketContext = nullptr;
-	IOContext* ioContext = nullptr;
-	DWORD trByteSize = 0;
-	char revcHeader[] = "recv:";
-	while (true)
-	{
-		bool ret = ::GetQueuedCompletionStatus(ioObj
-			, &trByteSize
-			, reinterpret_cast<PULONG_PTR>(&socketContext)
-			, reinterpret_cast<LPOVERLAPPED*>(&ioContext)
-			, INFINITE);
-
-		if (!ret)
-		{
-			std::cout << "Socket error;" << std::endl;
-			closesocket(socketContext->socket);
-			freeIOContext(ioContext);
-			delete ioContext;
-			delete socketContext;
-			continue;
-		}
-
-		if (reinterpret_cast<ULONG_PTR>(socketContext) == 0xffffffff)
-		{
-			/*closesocket(socketContext->socket);
-			freeIOContext(ioContext);
-			delete ioContext;
-			delete socketContext;*/
-			break;
-		}
-
-		switch (ioContext->mode)
-		{
-		case IOMode::Accept:
-		{
-			//更新新连接的socket信息，与listenSocket关联
-			SOCKET clntSocket = ioContext->socket;
-			if (clntSocket == INVALID_SOCKET)
-			{
-				std::cerr << "error Socket;" << std::endl;
-			}
-			SOCKET listenSocket = reinterpret_cast<SOCKET>(socketContext);
-
-			int ret = setsockopt(clntSocket, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, reinterpret_cast<char*>(&listenSocket), sizeof(SOCKET));
-			int error = WSAGetLastError();
-
-			sockaddr* addr = nullptr;
-			int addrSize = 0;
-			sockaddr* remtoAddr = nullptr;
-			int reAddrSize = 0;
-			getClntAddrFun(ioContext->buffer.buf
-				, 0
-				, sizeof(sockaddr) + 16
-				, sizeof(sockaddr) + 16
-				, &addr, &addrSize
-				, &remtoAddr, &reAddrSize);
-
-			SocketContext* newClntSocketContext = new SocketContext();
-			newClntSocketContext->socket = clntSocket;
-			newClntSocketContext->socketAddr = *reinterpret_cast<sockaddr_in*>(addr);
-
-			//关联完成端口
-			::CreateIoCompletionPort(reinterpret_cast<HANDLE>(clntSocket), ioObj, reinterpret_cast<ULONG_PTR>(newClntSocketContext), 0);
-
-			/*	freeIOContext(ioContext);
-				delete ioContext;*/
-
-				//请求读数据
-			IOContext* readIoContext = new IOContext();
-			initIOContext(readIoContext);
-			readIoContext->mode = IOMode::Read;
-			DWORD trSize = 0;
-			DWORD flage = 0;
-
-			::WSARecv(clntSocket, &readIoContext->buffer, 1, &trSize, &flage, &readIoContext->overlapped, nullptr);
-
-			//请求新的连接
-			IOContext* acceptIoContext = new IOContext();
-			initIOContext(acceptIoContext);
-			acceptIoContext->mode = IOMode::Accept;
-
-
-			SOCKET newClnt = WSASocket(AF_INET, SOCK_STREAM, 0, nullptr, 0, WSA_FLAG_OVERLAPPED);
-			DWORD trByte = 0;
-			/*bool ret =*/ acceptExFun(listenSocket
-				, newClnt
-				, acceptIoContext->buffer.buf
-				, 0/*0表示不接受数据，非0时 有链接后会等待到有数据接收时才唤醒，此函数可以控制过滤一些只连接但不通信的客户端*/
-				, sizeof(sockaddr) + 16
-				, sizeof(sockaddr) + 16
-				, &trByte
-				, &acceptIoContext->overlapped);
-		}
-		break;
-		case IOMode::Read:
-		{
-			if (trByteSize == 0)
-			{
-				::closesocket(socketContext->socket);
-				freeIOContext(ioContext);
-				delete ioContext;
-				continue;
-			}
-			CMByteArray recvByte(ioContext->buffer.buf, trByteSize);
-			recvByte.insert(0, revcHeader);
-
-			std::memset(ioContext->buffer.buf, 0, ioContext->bufferDefSize);
-			DWORD flage = 0;
-			DWORD trSize = 0;
-			::WSARecv(socketContext->socket, &ioContext->buffer, 1, &trSize, &flage, reinterpret_cast<OVERLAPPED*>(&ioContext->overlapped), 0);
-
-
-			IOContext* sendIo = new IOContext;
-			initIOContext(sendIo);
-			sendIo->mode = IOMode::Write;
-			const char* data = nullptr;
-			uint dataSize = 0;
-			recvByte.data(data, dataSize);
-			std::memcpy(sendIo->buffer.buf, data, dataSize);
-			sendIo->buffer.len = dataSize;
-			::WSASend(socketContext->socket, &sendIo->buffer, 1, &trSize, flage, reinterpret_cast<OVERLAPPED*>(&sendIo->overlapped), 0);
-		}
-		break;
-		case IOMode::Write:
-		{
-			if (trByteSize == 0)
-			{
-				::closesocket(socketContext->socket);
-			}
-			freeIOContext(ioContext);
-			delete ioContext;
-		}
-		break;
-		default:
-			break;
-		}
-	}
-}
+//enum class IOMode
+//{
+//	None,
+//	Read,
+//	Write,
+//	Accept
+//};
+//
+//struct IOContext
+//{
+//	OVERLAPPED overlapped{};
+//	WSABUF buffer;
+//	ulong bufferDefSize = 10240;
+//	ulong vaildSize = 0;//表示buffer中实际的数据大小，accept事件时没有意义
+//	IOMode mode = IOMode::None;
+//	SOCKET socket;
+//};
+//
+//void initIOContext(IOContext* iOContext)
+//{
+//	iOContext->buffer.buf = new CHAR[iOContext->bufferDefSize];
+//	iOContext->buffer.len = iOContext->bufferDefSize;
+//}
+//
+//void freeIOContext(IOContext* iOContext)
+//{
+//	delete[]iOContext->buffer.buf;
+//	iOContext->buffer.buf = nullptr;
+//}
+//
+//struct SocketContext
+//{
+//	SOCKET socket = INVALID_SOCKET;
+//	sockaddr_in socketAddr{};
+//};
+//
+//
+//void workFun(void* arg)
+//{
+//	HANDLE ioObj = reinterpret_cast<HANDLE>(arg);
+//	SocketContext* socketContext = nullptr;
+//	IOContext* ioContext = nullptr;
+//	DWORD trByteSize = 0;
+//	char revcHeader[] = "recv:";
+//	while (true)
+//	{
+//		bool ret = ::GetQueuedCompletionStatus(ioObj
+//			, &trByteSize
+//			, reinterpret_cast<PULONG_PTR>(&socketContext)
+//			, reinterpret_cast<LPOVERLAPPED*>(&ioContext)
+//			, INFINITE);
+//
+//		if (!ret)
+//		{
+//			std::cout << "Socket error;" << std::endl;
+//			closesocket(socketContext->socket);
+//			freeIOContext(ioContext);
+//			delete ioContext;
+//			delete socketContext;
+//			continue;
+//		}
+//
+//		if (reinterpret_cast<ULONG_PTR>(socketContext) == 0xffffffff)
+//		{
+//			/*closesocket(socketContext->socket);
+//			freeIOContext(ioContext);
+//			delete ioContext;
+//			delete socketContext;*/
+//			break;
+//		}
+//
+//		switch (ioContext->mode)
+//		{
+//		case IOMode::Accept:
+//		{
+//			//更新新连接的socket信息，与listenSocket关联
+//			SOCKET clntSocket = ioContext->socket;
+//			if (clntSocket == INVALID_SOCKET)
+//			{
+//				std::cerr << "error Socket;" << std::endl;
+//			}
+//			SOCKET listenSocket = reinterpret_cast<SOCKET>(socketContext);
+//
+//			int ret = setsockopt(clntSocket, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, reinterpret_cast<char*>(&listenSocket), sizeof(SOCKET));
+//			int error = WSAGetLastError();
+//
+//			sockaddr* addr = nullptr;
+//			int addrSize = 0;
+//			sockaddr* remtoAddr = nullptr;
+//			int reAddrSize = 0;
+//			getClntAddrFun(ioContext->buffer.buf
+//				, 0
+//				, sizeof(sockaddr) + 16
+//				, sizeof(sockaddr) + 16
+//				, &addr, &addrSize
+//				, &remtoAddr, &reAddrSize);
+//
+//			SocketContext* newClntSocketContext = new SocketContext();
+//			newClntSocketContext->socket = clntSocket;
+//			newClntSocketContext->socketAddr = *reinterpret_cast<sockaddr_in*>(addr);
+//
+//			//关联完成端口
+//			::CreateIoCompletionPort(reinterpret_cast<HANDLE>(clntSocket), ioObj, reinterpret_cast<ULONG_PTR>(newClntSocketContext), 0);
+//
+//			/*	freeIOContext(ioContext);
+//				delete ioContext;*/
+//
+//				//请求读数据
+//			IOContext* readIoContext = new IOContext();
+//			initIOContext(readIoContext);
+//			readIoContext->mode = IOMode::Read;
+//			DWORD trSize = 0;
+//			DWORD flage = 0;
+//
+//			::WSARecv(clntSocket, &readIoContext->buffer, 1, &trSize, &flage, &readIoContext->overlapped, nullptr);
+//
+//			//请求新的连接
+//			IOContext* acceptIoContext = new IOContext();
+//			initIOContext(acceptIoContext);
+//			acceptIoContext->mode = IOMode::Accept;
+//
+//
+//			SOCKET newClnt = WSASocket(AF_INET, SOCK_STREAM, 0, nullptr, 0, WSA_FLAG_OVERLAPPED);
+//			DWORD trByte = 0;
+//			/*bool ret =*/ acceptExFun(listenSocket
+//				, newClnt
+//				, acceptIoContext->buffer.buf
+//				, 0/*0表示不接受数据，非0时 有链接后会等待到有数据接收时才唤醒，此函数可以控制过滤一些只连接但不通信的客户端*/
+//				, sizeof(sockaddr) + 16
+//				, sizeof(sockaddr) + 16
+//				, &trByte
+//				, &acceptIoContext->overlapped);
+//		}
+//		break;
+//		case IOMode::Read:
+//		{
+//			if (trByteSize == 0)
+//			{
+//				::closesocket(socketContext->socket);
+//				freeIOContext(ioContext);
+//				delete ioContext;
+//				continue;
+//			}
+//			CMByteArray recvByte(ioContext->buffer.buf, trByteSize);
+//			recvByte.insert(0, revcHeader);
+//
+//			std::memset(ioContext->buffer.buf, 0, ioContext->bufferDefSize);
+//			DWORD flage = 0;
+//			DWORD trSize = 0;
+//			::WSARecv(socketContext->socket, &ioContext->buffer, 1, &trSize, &flage, reinterpret_cast<OVERLAPPED*>(&ioContext->overlapped), 0);
+//
+//
+//			IOContext* sendIo = new IOContext;
+//			initIOContext(sendIo);
+//			sendIo->mode = IOMode::Write;
+//			const char* data = nullptr;
+//			uint dataSize = 0;
+//			recvByte.data(data, dataSize);
+//			std::memcpy(sendIo->buffer.buf, data, dataSize);
+//			sendIo->buffer.len = dataSize;
+//			::WSASend(socketContext->socket, &sendIo->buffer, 1, &trSize, flage, reinterpret_cast<OVERLAPPED*>(&sendIo->overlapped), 0);
+//		}
+//		break;
+//		case IOMode::Write:
+//		{
+//			if (trByteSize == 0)
+//			{
+//				::closesocket(socketContext->socket);
+//			}
+//			freeIOContext(ioContext);
+//			delete ioContext;
+//		}
+//		break;
+//		default:
+//			break;
+//		}
+//	}
+//}
 
 int main()
 {
-	WSADATA wsaData;
-	WSAStartup(MAKEWORD(2, 2), &wsaData);
-
-
-	CMIOCP iocp;
-
-	/*CMTcpServer tcpServer;
-	tcpServer.bind(CMHostAddress::LocalHost, 9999);
-	tcpServer.listen();*/
-	char recv[] = "ERROR";
-	CMIOCP::IOResultFun resultFun = [&](CMIOCP::IOResult* result)
-		{
-			if (result == nullptr)
-			{
-				return;
-			}
-
-			switch (result->ioMode)
-			{
-			case CMIOCP::IOMode::Accept:
-			{
-				std::cout << "accept\n";
-			}
-			break;
-			case CMIOCP::IOMode::Read:
-			{
-				//CMByteArray msg = result->msg;
-				//msg.insert(0, "recv:");
-				iocp.send(result->socket, recv);
-			}
-			break;
-			case CMIOCP::IOMode::Write:
-			{
-
-			}
-			break;
-			default:
-				break;
-			}
-
-
-
-		};
-	iocp.startIocp(CMHostAddress::LocalHost, 9999, resultFun, 0);
-
-
-	std::cout << "enter any close";
-	std::cin.get();
-	iocp.close();
+	CMByteArray data;
+	data.insert(0, "aasdads");
+	data.prepend("1111");
+	data.remove(2, 2);
+	std::cout << data.size();
+	data[0] = 'A';
+	for (auto itor = data.begin(); itor != data.end(); itor++)
+	{
+		std::cout << *itor << '\n';
+	}
+	data.at(100);
 	return 0;
-	//IOCP
-	/*SYSTEM_INFO systemInfor{};
-	::GetSystemInfo(&systemInfor);
-	uint threadCount = systemInfor.dwNumberOfProcessors;*/
-	uint threadCount = std::thread::hardware_concurrency();
+	//WSADATA wsaData;
+	//WSAStartup(MAKEWORD(2, 2), &wsaData);
+
+
+	//CMIOCP iocp;
+
+	///*CMTcpServer tcpServer;
+	//tcpServer.bind(CMHostAddress::LocalHost, 9999);
+	//tcpServer.listen();*/
+	//char recv[] = "ERROR";
+	//CMIOCP::IOResultFun resultFun = [&](CMIOCP::IOResult* result)
+	//	{
+	//		if (result == nullptr)
+	//		{
+	//			return;
+	//		}
+
+	//		switch (result->ioMode)
+	//		{
+	//		case CMIOCP::IOMode::Accept:
+	//		{
+	//			std::cout << "accept\n";
+	//		}
+	//		break;
+	//		case CMIOCP::IOMode::Read:
+	//		{
+	//			//CMByteArray msg = result->msg;
+	//			//msg.insert(0, "recv:");
+	//			iocp.send(result->socket, recv);
+	//		}
+	//		break;
+	//		case CMIOCP::IOMode::Write:
+	//		{
+
+	//		}
+	//		break;
+	//		default:
+	//			break;
+	//		}
 
 
 
-	HANDLE ioObj = ::CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 0);
+	//	};
+	//iocp.startIocp(CMHostAddress::LocalHost, 9999, resultFun, 0);
 
 
-	SOCKET listenSocket = ::WSASocket(AF_INET, SOCK_STREAM, 0, nullptr, 0, WSA_FLAG_OVERLAPPED);
-	if (listenSocket == INVALID_SOCKET)
-	{
-		return -1;
-	}
-	sockaddr_in sockeAddr{ 0 };
-	sockeAddr.sin_family = AF_INET;
-	sockeAddr.sin_port = htons(9999);
-	sockeAddr.sin_addr.s_addr = 0;
-
-	int ret = ::bind(listenSocket, reinterpret_cast<sockaddr*>(&sockeAddr), sizeof(sockaddr));
-	ret = ::listen(listenSocket, SOMAXCONN);
-
-
-	std::vector<std::thread> threadPool;
-
-	for (size_t i = 0; i < threadCount; i++)
-	{
-		threadPool.emplace_back(std::thread(&workFun, ioObj));
-	}
-
-	/*SocketContext* listenSocketContext = new SocketContext;
-	listenSocketContext->socket = listenSocket;*/
-
-	::CreateIoCompletionPort(reinterpret_cast<HANDLE>(listenSocket), ioObj, static_cast<ULONG_PTR>(listenSocket), 0);
-
-
-	//查询acceptEx
-	GUID acceptExGuid = WSAID_ACCEPTEX;
-	DWORD byte = 0;
-	::WSAIoctl(listenSocket
-		, SIO_GET_EXTENSION_FUNCTION_POINTER
-		, &acceptExGuid
-		, sizeof(acceptExGuid),
-		&acceptExFun
-		, sizeof(acceptExFun), &byte, 0, 0);
-
-	acceptExGuid = WSAID_GETACCEPTEXSOCKADDRS;
-	::WSAIoctl(listenSocket
-		, SIO_GET_EXTENSION_FUNCTION_POINTER
-		, &acceptExGuid
-		, sizeof(acceptExGuid),
-		&getClntAddrFun
-		, sizeof(getClntAddrFun), &byte, 0, 0);
-
-	//投递异步的accept
-	for (size_t i = 0; i < threadCount / 2; i++)
-	{
-		SOCKET clntSocket = ::WSASocket(AF_INET, SOCK_STREAM, 0, nullptr, 0, WSA_FLAG_OVERLAPPED);
-
-		IOContext* acceptIoContext = new IOContext();
-		initIOContext(acceptIoContext);
-		acceptIoContext->mode = IOMode::Accept;
-		acceptIoContext->socket = clntSocket;
-
-		DWORD trByte = 0;
-		bool ret = acceptExFun(listenSocket
-			, clntSocket
-			, acceptIoContext->buffer.buf
-			, 0/*0表示不接受数据，非0时 有链接后会等待到有数据接收时才唤醒，此函数可以控制过滤一些只连接但不通信的客户端*/
-			, sizeof(sockaddr) + 16
-			, sizeof(sockaddr) + 16
-			, &trByte
-			, &acceptIoContext->overlapped);
-	}
-
-
-	std::cin.get();
-
-
-	for (size_t i = 0; i < threadCount; i++)
-	{
-		::PostQueuedCompletionStatus(ioObj, 0, 0xffffffff, nullptr);
-	}
-
-	for (size_t i = 0; i < threadPool.size(); i++)
-	{
-		if (threadPool[i].joinable())
-		{
-			threadPool[i].join();
-		}
-	}
-
-	::closesocket(listenSocket);
-
-
-	return 0;
-
-	while (true)
-	{
-		sockaddr_in addr{ 0 };
-		int addrLen = sizeof(sockaddr_in);
-		SOCKET clntSocket = ::accept(listenSocket, reinterpret_cast<sockaddr*>(&addr), &addrLen);
-		if (clntSocket == INVALID_SOCKET)
-		{
-			continue;
-		}
-
-		SocketContext* socketContext = new SocketContext;
-		socketContext->socket = clntSocket;
-		socketContext->socketAddr = addr;
-
-		::CreateIoCompletionPort(reinterpret_cast<HANDLE>(clntSocket), ioObj, reinterpret_cast<ULONG_PTR>(socketContext), 0);
-
-		IOContext* ioContext = new IOContext();
-		initIOContext(ioContext);
-		ioContext->mode = IOMode::Read;
-
-
-		DWORD flags = 0;
-		DWORD bytesRecvd = 0;
-
-		int ret = ::WSARecv(clntSocket
-			, &ioContext->buffer
-			, 1
-			, &bytesRecvd
-			, &flags
-			, &ioContext->overlapped
-			, nullptr);
-
-		if (ret == SOCKET_ERROR)
-		{
-			int error = ::WSAGetLastError();
-			if (error != WSA_IO_PENDING)
-			{
-				::closesocket(clntSocket);
-				freeIOContext(ioContext);
-				delete socketContext;
-				delete ioContext;
-			}
-		}
-	}
+	//std::cout << "enter any close";
+	//std::cin.get();
+	//iocp.close();
+	//return 0;
+	////IOCP
+	///*SYSTEM_INFO systemInfor{};
+	//::GetSystemInfo(&systemInfor);
+	//uint threadCount = systemInfor.dwNumberOfProcessors;*/
+	//uint threadCount = std::thread::hardware_concurrency();
 
 
 
+	//HANDLE ioObj = ::CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 0);
 
 
+	//SOCKET listenSocket = ::WSASocket(AF_INET, SOCK_STREAM, 0, nullptr, 0, WSA_FLAG_OVERLAPPED);
+	//if (listenSocket == INVALID_SOCKET)
+	//{
+	//	return -1;
+	//}
+	//sockaddr_in sockeAddr{ 0 };
+	//sockeAddr.sin_family = AF_INET;
+	//sockeAddr.sin_port = htons(9999);
+	//sockeAddr.sin_addr.s_addr = 0;
+
+	//int ret = ::bind(listenSocket, reinterpret_cast<sockaddr*>(&sockeAddr), sizeof(sockaddr));
+	//ret = ::listen(listenSocket, SOMAXCONN);
 
 
+	//std::vector<std::thread> threadPool;
+
+	//for (size_t i = 0; i < threadCount; i++)
+	//{
+	//	threadPool.emplace_back(std::thread(&workFun, ioObj));
+	//}
+
+	///*SocketContext* listenSocketContext = new SocketContext;
+	//listenSocketContext->socket = listenSocket;*/
+
+	//::CreateIoCompletionPort(reinterpret_cast<HANDLE>(listenSocket), ioObj, static_cast<ULONG_PTR>(listenSocket), 0);
 
 
+	////查询acceptEx
+	//GUID acceptExGuid = WSAID_ACCEPTEX;
+	//DWORD byte = 0;
+	//::WSAIoctl(listenSocket
+	//	, SIO_GET_EXTENSION_FUNCTION_POINTER
+	//	, &acceptExGuid
+	//	, sizeof(acceptExGuid),
+	//	&acceptExFun
+	//	, sizeof(acceptExFun), &byte, 0, 0);
+
+	//acceptExGuid = WSAID_GETACCEPTEXSOCKADDRS;
+	//::WSAIoctl(listenSocket
+	//	, SIO_GET_EXTENSION_FUNCTION_POINTER
+	//	, &acceptExGuid
+	//	, sizeof(acceptExGuid),
+	//	&getClntAddrFun
+	//	, sizeof(getClntAddrFun), &byte, 0, 0);
+
+	////投递异步的accept
+	//for (size_t i = 0; i < threadCount / 2; i++)
+	//{
+	//	SOCKET clntSocket = ::WSASocket(AF_INET, SOCK_STREAM, 0, nullptr, 0, WSA_FLAG_OVERLAPPED);
+
+	//	IOContext* acceptIoContext = new IOContext();
+	//	initIOContext(acceptIoContext);
+	//	acceptIoContext->mode = IOMode::Accept;
+	//	acceptIoContext->socket = clntSocket;
+
+	//	DWORD trByte = 0;
+	//	bool ret = acceptExFun(listenSocket
+	//		, clntSocket
+	//		, acceptIoContext->buffer.buf
+	//		, 0/*0表示不接受数据，非0时 有链接后会等待到有数据接收时才唤醒，此函数可以控制过滤一些只连接但不通信的客户端*/
+	//		, sizeof(sockaddr) + 16
+	//		, sizeof(sockaddr) + 16
+	//		, &trByte
+	//		, &acceptIoContext->overlapped);
+	//}
 
 
+	//std::cin.get();
 
 
+	//for (size_t i = 0; i < threadCount; i++)
+	//{
+	//	::PostQueuedCompletionStatus(ioObj, 0, 0xffffffff, nullptr);
+	//}
+
+	//for (size_t i = 0; i < threadPool.size(); i++)
+	//{
+	//	if (threadPool[i].joinable())
+	//	{
+	//		threadPool[i].join();
+	//	}
+	//}
+
+	//::closesocket(listenSocket);
 
 
+	//return 0;
 
-	WSACleanup();
+	//while (true)
+	//{
+	//	sockaddr_in addr{ 0 };
+	//	int addrLen = sizeof(sockaddr_in);
+	//	SOCKET clntSocket = ::accept(listenSocket, reinterpret_cast<sockaddr*>(&addr), &addrLen);
+	//	if (clntSocket == INVALID_SOCKET)
+	//	{
+	//		continue;
+	//	}
 
-	return 0;
+	//	SocketContext* socketContext = new SocketContext;
+	//	socketContext->socket = clntSocket;
+	//	socketContext->socketAddr = addr;
+
+	//	::CreateIoCompletionPort(reinterpret_cast<HANDLE>(clntSocket), ioObj, reinterpret_cast<ULONG_PTR>(socketContext), 0);
+
+	//	IOContext* ioContext = new IOContext();
+	//	initIOContext(ioContext);
+	//	ioContext->mode = IOMode::Read;
+
+
+	//	DWORD flags = 0;
+	//	DWORD bytesRecvd = 0;
+
+	//	int ret = ::WSARecv(clntSocket
+	//		, &ioContext->buffer
+	//		, 1
+	//		, &bytesRecvd
+	//		, &flags
+	//		, &ioContext->overlapped
+	//		, nullptr);
+
+	//	if (ret == SOCKET_ERROR)
+	//	{
+	//		int error = ::WSAGetLastError();
+	//		if (error != WSA_IO_PENDING)
+	//		{
+	//			::closesocket(clntSocket);
+	//			freeIOContext(ioContext);
+	//			delete socketContext;
+	//			delete ioContext;
+	//		}
+	//	}
+	//}
+
+	//WSACleanup();
+
+	//return 0;
 	//{
 	//	CMTcpServer tcpServer;
 	//	tcpServer.bind(CMHostAddress::LocalHost, 9999);
