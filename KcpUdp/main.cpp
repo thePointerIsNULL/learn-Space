@@ -25,10 +25,9 @@ int updSend(const char* buf, int len, struct IKCPCB* kcp, void* user)
 
 unsigned int getCurrentTime()
 {
-	auto now = std::chrono::high_resolution_clock::now();
-	auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-		now.time_since_epoch()
-	);
+	static auto start = std::chrono::steady_clock::now(); //获取某一起点的相对时间，不会受系统时间的调整影响
+	auto now = std::chrono::steady_clock::now();
+	auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - start);//KCP只需要一个单调递增的时间来驱动
 	return ms.count();
 }
 
@@ -86,10 +85,18 @@ int main(int argc, char** argv)
 
 	ikcp_nodelay(kcpcb, 0, 10, 2, 0);
 
+	unsigned int nextUpdate = 0;
+
 	char buffer[1024]{ 0 };
 	while (true)
 	{
-		ikcp_update(kcpcb, getCurrentTime());
+		unsigned int now = getCurrentTime();//KCP推荐同一逻辑帧内，使用同一时间戳
+		if (now >= nextUpdate)
+		{
+			ikcp_update(kcpcb, now);
+			nextUpdate = ikcp_check(kcpcb, now);
+		}
+
 
 		CMByteArray udpMsg;
 		while (true)
@@ -129,9 +136,6 @@ int main(int argc, char** argv)
 		}
 
 		ikcp_send(kcpcb, msg.constData(), msg.size());
-
-		usleep(10);
-		//ikcp_check(kcpcb, getCurrentTime());
 	}
 
 	return 0;
