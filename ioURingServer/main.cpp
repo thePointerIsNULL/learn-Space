@@ -3,6 +3,7 @@
 #include <sys/socket.h>
 #include<netinet/in.h>
 #include <arpa/inet.h>
+#include <string.h>
 
 enum class EventType
 {
@@ -20,9 +21,8 @@ struct EventContext
 };
 
 void setAcceptEvent(io_uring* ring, int fd);
-void setReadEvent();
-void setWriteEvent();
-
+void setReadEvent(io_uring* ring, int fd);
+void setSendEvent(io_uring* ring, int fd, char* msg, int msgLen);
 
 
 
@@ -36,12 +36,14 @@ int main()
 	io_uring_queue_init(128, &ring, 0);
 
 	int listenFd = socket(AF_INET, SOCK_STREAM, 0);
+	int opt = 1;
+	::setsockopt(listenFd, SOL_SOCKET, SO_REUSEADDR, (char*)&opt, sizeof(opt));
 
 	sockaddr_in addr = {};
 	addr.sin_family = AF_INET;
 	//::inet_aton("123.60.94.36", reinterpret_cast<in_addr*>(&addr.sin_addr));
 	addr.sin_addr.s_addr = 0;
-	addr.sin_port = ntohs(61972);
+	addr.sin_port = htons(61972);
 
 
 	::bind(listenFd, reinterpret_cast<sockaddr*>(&addr), sizeof(sockaddr_in));
@@ -53,8 +55,8 @@ int main()
 
 	__kernel_timespec timeout =
 	{
-		.tv_nsec = 100,
-		.tv_sec = 0
+		.tv_sec = 0,
+		.tv_nsec = 300 * 1000 * 1000
 	};
 
 	bool needSubmit = false;
@@ -63,47 +65,77 @@ int main()
 		needSubmit = false;
 
 		io_uring_cqe* cqeP = nullptr;
-		int cqeCount = io_uring_wait_cqes(&ring, &cqeP, 1, &timeout, nullptr);
-		for (size_t i = 0; i < cqeCount; i++)
+		int ret = io_uring_wait_cqes(&ring, &cqeP, 1, &timeout, nullptr);
+		//io_uring_peek_batch_cqe
+		if (ret < 0)
 		{
-			io_uring_cqe* cqe = (cqeP + i);
-			if (cqe == nullptr)
+			continue;
+		}
+		unsigned int head = 0;
+		unsigned int count = 0;
+		io_uring_for_each_cqe(&ring, head, cqeP)
+		{
+			count++;
+			int cqeRes = cqeP->res;
+			EventContext* context = reinterpret_cast<EventContext*>(cqeP->user_data);
+			if (cqeRes < 0)
 			{
-				break;
+				printf("retrun error:%d", cqeRes);
+				if (context->fd > 0)
+					close(context->fd);
+				delete context;
+				context = nullptr;
+				continue;
 			}
-			EventContext* context = reinterpret_cast<EventContext*>(cqe->user_data);
 			switch (context->type)
 			{
 			case EventType::ACCEPT:
 			{
 				setAcceptEvent(&ring, listenFd);
+				setReadEvent(&ring, cqeRes);
 				needSubmit = true;
 			}
 			break;
 			case EventType::RECV:
 			{
-
+				if (cqeRes == 0)
+				{
+					close(context->fd);
+					printf("socket closed\n");
+					break;
+				}
+				printf("%s\n", context->buffer);
+				setSendEvent(&ring, context->fd, context->buffer, cqeRes);
+				needSubmit = true;
 			}
 			break;
 			case EventType::SEND:
 			{
-
+				if (cqeRes == 0)
+				{
+					close(context->fd);
+					printf("socket closed\n");
+					break;
+				}
+				setReadEvent(&ring, context->fd);
+				needSubmit = true;
 			}
 			break;
 			default:
 				break;
 			}
-			io_uring_cqe_seen(&ring, cqe);
+			delete context;
+			context = nullptr;
 		}
+
+		io_uring_cq_advance(&ring, count);
 
 		if (needSubmit)
 		{
 			io_uring_submit(&ring);
 		}
 	}
-
-
-
+	io_uring_queue_exit(&ring);
 
 	printf("%s 向你问好!\n", "ioURingServer");
 	return 0;
@@ -125,8 +157,48 @@ void setAcceptEvent(io_uring* ring, int fd)
 
 	EventContext* context = new EventContext();
 	context->type = EventType::ACCEPT;
-	context->fd = fd;
+	context->fd = -1;
 	sqe->user_data = reinterpret_cast<unsigned long long>(context);
 
 	io_uring_prep_accept(sqe, fd, nullptr, nullptr, 0);
+}
+void setReadEvent(io_uring* ring, int fd)
+{
+	if (ring == nullptr)
+	{
+		return;
+	}
+
+	io_uring_sqe* sqe = io_uring_get_sqe(ring);
+	if (sqe == nullptr)
+	{
+		return;
+	}
+	EventContext* context = new EventContext();
+	context->type = EventType::RECV;
+	context->fd = fd;
+	sqe->user_data = reinterpret_cast<unsigned long long>(context);
+
+	io_uring_prep_recv(sqe, fd, context->buffer, 2048, 0);
+
+}
+void setSendEvent(io_uring* ring, int fd, char* msg, int msgLen)
+{
+	if (ring == nullptr)
+	{
+		return;
+	}
+
+	io_uring_sqe* sqe = io_uring_get_sqe(ring);
+	if (sqe == nullptr)
+	{
+		return;
+	}
+	EventContext* context = new EventContext();
+	context->type = EventType::SEND;
+	context->fd = fd;
+	memcpy(context->buffer, msg, msgLen);
+	sqe->user_data = reinterpret_cast<unsigned long long>(context);
+
+	io_uring_prep_send(sqe, fd, context->buffer, msgLen, 0);
 }
