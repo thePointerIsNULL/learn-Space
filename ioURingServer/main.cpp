@@ -29,8 +29,13 @@ void setSendEvent(io_uring* ring, int fd, char* msg, int msgLen);
 
 
 
-int main()
+int main(int argc, char** argv)
 {
+	if (argc < 1)
+	{
+		printf("error params\n");
+		return -1;
+	}
 	//初始化实例 创建sq与cq
 	io_uring ring = {};
 	io_uring_queue_init(128, &ring, 0);
@@ -41,8 +46,8 @@ int main()
 
 	sockaddr_in addr = {};
 	addr.sin_family = AF_INET;
-	//::inet_aton("123.60.94.36", reinterpret_cast<in_addr*>(&addr.sin_addr));
-	addr.sin_addr.s_addr = 0;
+	::inet_aton(argv[0], reinterpret_cast<in_addr*>(&addr.sin_addr));
+	//addr.sin_addr.s_addr = 0;
 	addr.sin_port = htons(61972);
 
 
