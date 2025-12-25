@@ -149,13 +149,13 @@ ssize_t recv(int fd, void* buf, size_t len, int flags)
 			event.events = EPOLLIN;
 			epoll_ctl(schedulerP->epollFd, EPOLL_CTL_ADD, fd, &event);
 
-			getcontext(&cCtx->ucp);
+			/*getcontext(&cCtx->ucp);
 			cCtx->ucp.uc_stack.ss_sp = cCtx->stack;
 			cCtx->ucp.uc_stack.ss_size = STACKSIZE;
 			cCtx->ucp.uc_link = nullptr;
-			makecontext(&cCtx->ucp, (void(*)())doRun, 1, schedulerP->listenFd);
+			makecontext(&cCtx->ucp, (void(*)())doRun, 1, schedulerP->listenFd);*/
 
-			swapcontext(&schedulerP->mainUcp, &schedulerP->schedulerUcp);
+			swapcontext(&cCtx->ucp, &schedulerP->schedulerUcp);
 			int c = 11;
 		}
 	}
@@ -210,7 +210,7 @@ void scheduler()
 		{
 			epoll_event* event = &events[i];
 			CoroutineCtx* cCtx = schedulerP->fdCxtMap[event->data.fd];
-			swapcontext(&schedulerP->schedulerUcp, &schedulerP->mainUcp);
+			swapcontext(&schedulerP->schedulerUcp, &cCtx->ucp);
 		}
 	}
 }
