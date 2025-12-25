@@ -24,7 +24,8 @@ struct Config
 	int durationTime = -1;//s
 	unsigned int msgSize = 64;
 	Mode mode;
-	static constexpr char msg[] = "abcdefghigklmnopqrstuvwxyz1234567890abcdefghigklmnopqrstuvwxyz\t";
+	//static constexpr char msg[] = "abcdefghigklmnopqrstuvwxyz1234567890abcdefghigklmnopqrstuvwxyz\t";
+	char msg[64] = "abcdefghigklmnopqrstuvwxyz1234567890abcdefghigklmnopqrstuvwxyz\t";
 	io_uring* ring = nullptr;
 };
 
@@ -51,6 +52,7 @@ void startTest(Config& config);
 
 int main(int argc, char** argv)
 {
+
 	if (argc < 6)
 	{
 		printf("params error\n");
@@ -78,7 +80,7 @@ int main(int argc, char** argv)
 	std::cout << "message size:" << config.msgSize << '\n' << "------------------------------------\n";
 
 	io_uring ring;
-	io_uring_queue_init(1024, &ring, 0);
+	int ret = io_uring_queue_init(config.clSize, &ring, 0);
 	config.ring = &ring;
 
 	startTest(config);
@@ -230,6 +232,7 @@ void startTest(Config& config)
 			{
 				return;
 			}
+			memset(sqe, 0, sizeof(io_uring_sqe));
 			sqe->user_data = reinterpret_cast<__u64>(context);
 			io_uring_prep_connect(sqe, fd, reinterpret_cast<sockaddr*>(&serverAddr), sizeof(sockaddr_in));
 		};
@@ -270,7 +273,7 @@ void startTest(Config& config)
 
 	std::cout << "-------------------start-------------------\n";
 
-	while (finished())
+	while (!finished())
 	{
 		io_uring_cqe* cqesP[1024];
 		int ready = io_uring_peek_batch_cqe(config.ring, cqesP, 1024);
@@ -281,6 +284,7 @@ void startTest(Config& config)
 			int res = cqe->res;
 			if (res < 0)
 			{
+				std::cout << "res error:" << res << '\n';
 				::close(eventContext->fd);
 				putEventContext(eventContext);
 				continue;
@@ -315,9 +319,15 @@ void startTest(Config& config)
 
 		}
 		io_uring_cq_advance(config.ring, ready);
+		io_uring_submit(config.ring);
 	}
 
 	std::cout << "-------------------end-------------------\n";
+	if (overTime == 0)
+	{
+		std::cout << "faild\n";
+		return;
+	}
 
 	std::cout << "over time:" << overTime << '\n';
 	std::cout << "finished count:" << finishedCount << '\n';
