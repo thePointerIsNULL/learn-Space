@@ -2,3 +2,4 @@
 x64/
 *.VC.*
 /qpsTool/qpsTool.sln
+Coroutine/Coroutine.sln
