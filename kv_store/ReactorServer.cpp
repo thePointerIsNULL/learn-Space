@@ -1,10 +1,15 @@
 #include "ReactorServer.h"
 #include <sys/epoll.h>
 #include <fcntl.h>
-#include <string.h>
-#include <unistd.h>
 
-void ReactorEventObj::accept(int fd)
+
+
+ReactorEventObj::~ReactorEventObj()
+{
+
+}
+
+void ReactorEventObj::onAccept(int fd)
 {
 	ReactorServer::setNoBlock(fd);
 	acceptImp(fd);
@@ -17,12 +22,10 @@ void ReactorEventObj::onRecv()
 	{
 		memset(_dataBuffer, 0, _bufferSize);
 		int size = ::recv(_fd, _dataBuffer, _bufferSize, 0);
-		if (size < 0 )
+		if (size < 0)
 		{
 			if (errno != EWOULDBLOCK)
 			{
-				close(_fd);
-				_fd = -1;
 				happenError();
 			}
 			else
@@ -44,9 +47,34 @@ void ReactorEventObj::onRecv()
 
 void ReactorEventObj::onSend()
 {
+	int offset = 0;
+	while (!_sendArry.isEmpty())
+	{
+		int ret = send(_fd, _sendArry.constData() + offset, _sendArry.size() - offset, 0);
+		if (ret < 0)
+		{
+			if (errno != EWOULDBLOCK)
+			{
+				happenError();
+			}
+			else
+			{
+				break;
+			}
+		}
+		offset += ret;
+	}
+	_sendArry.remove(0, offset);
 	sendImp();
 }
 
+
+void ReactorEventObj::onClose()
+{
+	closeImp();
+	close(_fd);
+	_fd = -1;
+}
 
 void ReactorServer::setNoBlock(int fd)
 {
@@ -55,20 +83,25 @@ void ReactorServer::setNoBlock(int fd)
 	::fcntl(fd, F_SETFL, optVal);
 }
 
+ReactorServer::ReactorServer(ReactorEventObjPtr serverObj)
+	:_serverObjPtr(serverObj) 
+{
+	_serverObjPtr->setMan(this);
+}
+
+ReactorServer::~ReactorServer()
+{
+
+}
+
 void ReactorServer::doRun()
 {
-	/*_listenFd = socket(AF_INET, SOCK_STREAM, 0);
-	int ret = bind(_listenFd, reinterpret_cast<sockaddr*>(&_serverAddr), sizeof(sockaddr_in));
-	ret = listen(_listenFd, 1024);
-
-	int opt = 1;
-	::setsockopt(_listenFd, SOL_SOCKET, SO_REUSEADDR, (char*)&opt, sizeof(opt));*/
-
 	_epollFd = epoll_create(1);
-	/*epoll_event event = {};
-	event.data.fd = _listenFd;
+	int listenFD = _serverObjPtr->getFd();
+	epoll_event event = {};
+	event.data.fd = listenFD;
 	event.events = EPOLL_EVENTS::EPOLLIN | EPOLL_EVENTS::EPOLLET;
-	epoll_ctl(_epollFd, EPOLL_CTL_ADD, _listenFd, &event);*/
+	epoll_ctl(_epollFd, EPOLL_CTL_ADD, listenFD, &event);
 
 	epoll_event events[_eventCount] = {};
 
@@ -79,12 +112,12 @@ void ReactorServer::doRun()
 		{
 			epoll_event* event = &events[i];
 			int readyFd = event->data.fd;
-			if (readyFd == _serverObjPtr->getFd())
+			if (readyFd == listenFD)
 			{
-				int clFd = accept(_serverObjPtr->getFd(), nullptr, nullptr);
+				int clFd = accept(listenFD, nullptr, nullptr);
 				if (clFd != -1)
 				{
-					_serverObjPtr->accept(clFd);
+					_serverObjPtr->onAccept(clFd);
 				}
 				continue;
 			}
@@ -102,7 +135,59 @@ void ReactorServer::doRun()
 	}
 }
 
-void ReactorServer::recvFromFd(int fd)
+void ReactorServer::addEventObj(ReactorEventObjPtr objPtr)
 {
+	int fd = objPtr->getFd();
+	if (_eventMap.find(fd) != _eventMap.end())
+	{
+		return;
+	}
+	objPtr->setMan(this);
+	_eventMap[fd] = objPtr;
 
+	updateEventObj(fd);
+}
+
+void ReactorServer::removeEventObj(ReactorEventObjPtr objPtr)
+{
+	auto pos = _eventMap.erase(objPtr->getFd());
+	if (pos != -1)
+	{
+		epoll_ctl(_epollFd, EPOLL_CTL_DEL, objPtr->getFd(), nullptr);
+	}
+}
+
+void ReactorServer::updateEventObj(int fd)
+{
+	auto itor = _eventMap.find(fd);
+	if (itor == _eventMap.end())
+	{
+		return;
+	}
+	ReactorEventObjPtr objPtr = itor->second;
+	epoll_event event = {};
+	event.data.fd = objPtr->getFd();
+	uint32_t events = 0;
+	if (objPtr->getEventType() == ReactorEventObj::EventType::Accept
+		|| objPtr->getEventType() == ReactorEventObj::EventType::Read)
+	{
+		events = EPOLL_EVENTS::EPOLLIN;
+	}
+	else if(objPtr->getEventType() == ReactorEventObj::EventType::Write)
+	{
+		events = EPOLL_EVENTS::EPOLLOUT;
+	}
+	if (objPtr->getTriggerMode() == ReactorEventObj::TriggerMode::ET)
+	{
+		events |= EPOLL_EVENTS::EPOLLET;
+	}
+
+	event.events = events;
+	if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, objPtr->getFd(), &event) == -1)
+	{
+		if (errno == EEXIST)
+		{
+			epoll_ctl(_epollFd, EPOLL_CTL_MOD, objPtr->getFd(), &event);
+		}
+	}
 }

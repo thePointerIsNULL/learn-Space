@@ -79,10 +79,12 @@
   <ItemGroup>
     <ClCompile Include="CMByteArray.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Network.cpp" />
     <ClCompile Include="ReactorServer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CMByteArray.h" />
+    <ClInclude Include="Network.h" />
     <ClInclude Include="ReactorServer.h" />
   </ItemGroup>
   <ItemDefinitionGroup />
