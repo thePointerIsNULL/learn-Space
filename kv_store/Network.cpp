@@ -63,20 +63,31 @@ void KVTcpClient::happenError()
 
 void KVTcpClient::recvImp()
 {
+	CMByteArray echoData;
 	while (!_recvQueue.empty())
 	{
 		const CMByteArray& data = _recvQueue.front();
 		std::cout << data.data() << '\n';
+		echoData.append(data);
 		_recvQueue.pop();
 	}
+	_sendArry = echoData;
+
+	_type = ReactorEventObj::ReadAndWrite;
+	_manger->updateEventObj(_fd);
+
 }
 
 void KVTcpClient::sendImp()
 {
-
+	if (_sendArry.isEmpty())
+	{
+		_type = ReactorEventObj::Read;
+		_manger->updateEventObj(_fd);
+	}
 }
 
 void KVTcpClient::closeImp()
 {
-
+	_manger->removeEventObj(_fd);
 }

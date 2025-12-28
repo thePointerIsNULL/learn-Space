@@ -36,19 +36,21 @@ void ReactorEventObj::onRecv()
 
 		if (size == 0)
 		{
+			_recvQueue.push(std::move(byteArry));
+			recvImp();
 			onClose();
 			return;
 		}
 		byteArry.append(_dataBuffer, size);
 	}
-	_recvQueue.push(std::move(byteArry));
+	_recvQueue.push(byteArry);
 	recvImp();
 }
 
 void ReactorEventObj::onSend()
 {
 	int offset = 0;
-	while (!_sendArry.isEmpty())
+	while (_sendArry.size() != offset)
 	{
 		int ret = send(_fd, _sendArry.constData() + offset, _sendArry.size() - offset, 0);
 		if (ret < 0)
@@ -61,6 +63,13 @@ void ReactorEventObj::onSend()
 			{
 				break;
 			}
+		}
+		if (ret == 0)
+		{
+			_sendArry.remove(0, offset + ret);
+			sendImp();
+			onClose();
+			return;
 		}
 		offset += ret;
 	}
@@ -84,7 +93,7 @@ void ReactorServer::setNoBlock(int fd)
 }
 
 ReactorServer::ReactorServer(ReactorEventObjPtr serverObj)
-	:_serverObjPtr(serverObj) 
+	:_serverObjPtr(serverObj)
 {
 	_serverObjPtr->setMan(this);
 }
@@ -148,12 +157,12 @@ void ReactorServer::addEventObj(ReactorEventObjPtr objPtr)
 	updateEventObj(fd);
 }
 
-void ReactorServer::removeEventObj(ReactorEventObjPtr objPtr)
+void ReactorServer::removeEventObj(int fd)
 {
-	auto pos = _eventMap.erase(objPtr->getFd());
+	auto pos = _eventMap.erase(fd);
 	if (pos != -1)
 	{
-		epoll_ctl(_epollFd, EPOLL_CTL_DEL, objPtr->getFd(), nullptr);
+		epoll_ctl(_epollFd, EPOLL_CTL_DEL, fd, nullptr);
 	}
 }
 
@@ -168,12 +177,16 @@ void ReactorServer::updateEventObj(int fd)
 	epoll_event event = {};
 	event.data.fd = objPtr->getFd();
 	uint32_t events = 0;
-	if (objPtr->getEventType() == ReactorEventObj::EventType::Accept
+	if (objPtr->getEventType() == ReactorEventObj::EventType::ReadAndWrite)
+	{
+		events = EPOLL_EVENTS::EPOLLIN | EPOLL_EVENTS::EPOLLOUT;
+	}
+	else if (objPtr->getEventType() == ReactorEventObj::EventType::Accept
 		|| objPtr->getEventType() == ReactorEventObj::EventType::Read)
 	{
 		events = EPOLL_EVENTS::EPOLLIN;
 	}
-	else if(objPtr->getEventType() == ReactorEventObj::EventType::Write)
+	else if (objPtr->getEventType() == ReactorEventObj::EventType::Write)
 	{
 		events = EPOLL_EVENTS::EPOLLOUT;
 	}

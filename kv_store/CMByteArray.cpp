@@ -241,7 +241,7 @@ CMByteArray::CMByteArray(const char* str, size_t len) noexcept
 
 void CMByteArray::resetBuffer()
 {
-	std::shared_ptr<char> buffer(new char[_capacity] {0}, std::default_delete<char[]>());
+	std::shared_ptr<char> buffer(new char[_capacity](), std::default_delete<char[]>());
 	memcpy(buffer.get(), _data.get(), _size);
 	_data = buffer;
 }
@@ -253,6 +253,7 @@ void CMByteArray::insertElement(size_t pos, const char* dataP, size_t dataLen)
 	if (size > _capacity)
 	{
 		_capacity = static_cast<size_t>((_capacity + dataLen) * _step);
+		resetBuffer();
 	}
 	if (!_data.unique())
 	{

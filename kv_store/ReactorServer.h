@@ -19,9 +19,10 @@ public:
 	enum EventType
 	{
 		None = 0,
-		Accept = 1,
-		Read = 1 << 1,
-		Write = 1 << 2
+		Accept ,
+		Read ,
+		Write,
+		ReadAndWrite
 	};
 	enum TriggerMode
 	{
@@ -68,7 +69,7 @@ public:
 	~ReactorServer();
 	void doRun();
 	void addEventObj(ReactorEventObjPtr objPtr);
-	void removeEventObj(ReactorEventObjPtr objPtr);
+	void removeEventObj(int fd);
 	void updateEventObj(int fd);
 private:
 	static constexpr int _eventCount = 1024 * 100;
