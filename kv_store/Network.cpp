@@ -29,7 +29,11 @@ KVTcpServer::~KVTcpServer()
 
 void KVTcpServer::happenError()
 {
-
+	if (_fd != -1)
+	{
+		close(_fd);
+		_fd = -1;
+	}
 }
 
 void KVTcpServer::acceptImp(int fd)
@@ -58,6 +62,11 @@ KVTcpClient::~KVTcpClient()
 
 void KVTcpClient::happenError()
 {
+	if (_fd != -1)
+	{
+		close(_fd);
+		_fd = -1;
+	}
 
 }
 
@@ -90,4 +99,6 @@ void KVTcpClient::sendImp()
 void KVTcpClient::closeImp()
 {
 	_manger->removeEventObj(_fd);
+	close(_fd);
+	_fd = -1;
 }

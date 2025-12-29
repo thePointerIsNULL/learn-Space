@@ -81,8 +81,6 @@ void ReactorEventObj::onSend()
 void ReactorEventObj::onClose()
 {
 	closeImp();
-	close(_fd);
-	_fd = -1;
 }
 
 void ReactorServer::setNoBlock(int fd)
