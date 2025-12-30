@@ -1,5 +1,6 @@
 #include "Network.h"
 #include <iostream>
+#include "Protocol.h"
 
 KVTcpServer::KVTcpServer(const CMByteArray& ip, short port)
 	:_ip(ip), _port(port)
@@ -14,7 +15,7 @@ KVTcpServer::KVTcpServer(const CMByteArray& ip, short port)
 	int ret = bind(_fd, reinterpret_cast<sockaddr*>(&addr), sizeof(sockaddr_in));
 	ret = listen(_fd, 1024);
 	int opt = 1;
-	::setsockopt(_fd, SOL_SOCKET, SO_REUSEADDR, (char*)&opt, sizeof(opt));
+	ret = ::setsockopt(_fd, SOL_SOCKET, SO_REUSEADDR, (char*)&opt, sizeof(opt));
 
 }
 
@@ -72,19 +73,9 @@ void KVTcpClient::happenError()
 
 void KVTcpClient::recvImp()
 {
-	CMByteArray echoData;
-	while (!_recvQueue.empty())
-	{
-		const CMByteArray& data = _recvQueue.front();
-		std::cout << data.data() << '\n';
-		echoData.append(data);
-		_recvQueue.pop();
-	}
-	_sendBuffer = echoData;
-
-	_type = ReactorEventObj::ReadAndWrite;
-	_manger->updateEventObj(_fd);
-
+	size_t dissipativeSize = 0;
+	ProtocolHelper::analysis(_recvBuffer, dissipativeSize);
+	_recvBuffer.remove(0, dissipativeSize);
 }
 
 void KVTcpClient::sendImp()

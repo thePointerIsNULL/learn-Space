@@ -1,6 +1,8 @@
 #include "Protocol.h"
+#include <netinet/in.h>
 
-ProtocolHelper::KeyValueList ProtocolHelper::analysis(CMByteArray& msgData, size_t& surplusSize)
+const char* ProtocolHelper::_command[] = { "Get", "Set", "Del", "Exist" };
+ProtocolHelper::KeyValueList ProtocolHelper::analysis(CMByteArray& msgData, size_t& dissipativeSize)
 {
 	auto getLine = [](const char* data, size_t dataLen, CMByteArray& line)
 		{
@@ -21,7 +23,7 @@ ProtocolHelper::KeyValueList ProtocolHelper::analysis(CMByteArray& msgData, size
 			return true;
 		};
 
-	auto getCommand = [](CMByteArray& commandStr)->KeyValue
+	auto getCommand = [&](CMByteArray& commandStr)->KeyValue
 		{
 			CMByteArrayVector arrays = commandStr.split("\r\n");
 			if (arrays.empty())
@@ -31,14 +33,38 @@ ProtocolHelper::KeyValueList ProtocolHelper::analysis(CMByteArray& msgData, size
 			size_t type = 0;
 			for (; type < Command::Count; type++)
 			{
-				if (strcmp(arrays.at(0).constData(), _command[type]) == 0)
+				char* a = nullptr;
+				if (strcmp(arrays.at(0).constData(), ProtocolHelper::_command[type]) == 0)
 				{
 					break;
 				}
 			}
+			KeyValue keyValue;
 			switch (static_cast<Command>(type))
 			{
+			case Command::Get:
+			{
+				Key key = arrays.at(1).chop(2).data();
+				Value value = arrays.at(1).chop(2).data();
+			}
+			break;
+			case Command::Set:
+			{
+
+			}
+			break;
+			case Command::Del:
+			{
+
+			}
+			break;
+			case Command::Exist:
+			{
+
+			}
+			break;
 			default:
+				return {};
 				break;
 			}
 		};
@@ -62,6 +88,7 @@ ProtocolHelper::KeyValueList ProtocolHelper::analysis(CMByteArray& msgData, size
 			break;
 		}
 		currentPos += commandHeader.size() + 2;// \r\n³¤¶È
+		
 		data = data + currentPos;
 		size -= currentPos;
 
@@ -74,9 +101,9 @@ ProtocolHelper::KeyValueList ProtocolHelper::analysis(CMByteArray& msgData, size
 		command.append(data, commandLen);
 		currentPos += commandLen;
 
-		
+		getCommand(command);
 
 	}
-	surplusSize = currentPos;
+	dissipativeSize = currentPos;
 	return ret;
 }

@@ -21,8 +21,8 @@ public:
 	};
 
 	//解析数据 surplusSize剩余未解析的长度
-	KeyValueList analysis(CMByteArray& msgData,size_t& surplusSize);
+	static KeyValueList analysis(CMByteArray& msgData, size_t& dissipativeSize);
 private:
-	static constexpr char* _command[] = { "Get","Set" ,"Del" ,"Exist" };
+	static const char* _command[];;
 };
 

@@ -39,6 +39,7 @@ public:
 	CMByteArray& remove(size_t pos, size_t len = -1);
 	size_t find(const CMByteArray& value, size_t startPos = 0)const;
 	std::vector<CMByteArray> split(const CMByteArray& value)const;
+	CMByteArray& chop(size_t count);
 	void detach();
 	void clear();
 	void reserve(size_t size);

@@ -136,7 +136,7 @@ size_t CMByteArray::find(const CMByteArray& value, size_t startPos /*= 0*/) cons
 		}
 		if (isSame)
 		{
-			return pos;
+			return i;
 		}
 	}
 	return -1;
@@ -144,7 +144,25 @@ size_t CMByteArray::find(const CMByteArray& value, size_t startPos /*= 0*/) cons
 
 std::vector<CMByteArray> CMByteArray::split(const CMByteArray& value) const
 {
+	std::vector<CMByteArray> ret;
+	size_t pos = 0;
+	while (true)
+	{
+		size_t index = find(value, pos);
+		if (index == -1)
+		{
+			break;
+		}
+		CMByteArray temp(_data.get() + pos, index - pos);
+		ret.push_back(temp);
+		pos = index + value.size();
+	}
+	return ret;
+}
 
+CMByteArray& CMByteArray::chop(size_t count)
+{
+	remove(_size - count);
 }
 
 void CMByteArray::detach()
@@ -260,7 +278,7 @@ CMByteArray::~CMByteArray() noexcept
 
 
 CMByteArray::CMByteArray(const char* str, size_t len) noexcept
-	:_size(len), _capacity(len)
+	:_size(0), _capacity(len + 1)
 {
 	resetBuffer();
 	insertElement(0, str, len);
