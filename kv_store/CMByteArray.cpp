@@ -117,6 +117,36 @@ CMByteArray& CMByteArray::remove(size_t pos, size_t len)
 	return*this;
 }
 
+size_t CMByteArray::find(const CMByteArray& value, size_t startPos /*= 0*/) const
+{
+	bool isSame = false;
+	int pos = 0;
+	for (size_t i = startPos; i < _size; i++)
+	{
+		pos = i;
+		bool isSame = true;
+		for (size_t j = 0; j < value._size; j++)
+		{
+			if (_data.get()[pos] != value._data.get()[j])
+			{
+				isSame = false;
+				break;
+			}
+			pos++;
+		}
+		if (isSame)
+		{
+			return pos;
+		}
+	}
+	return -1;
+}
+
+std::vector<CMByteArray> CMByteArray::split(const CMByteArray& value) const
+{
+
+}
+
 void CMByteArray::detach()
 {
 	if (!_data.unique())

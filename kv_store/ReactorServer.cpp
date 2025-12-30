@@ -17,7 +17,6 @@ void ReactorEventObj::onAccept(int fd)
 
 void ReactorEventObj::onRecv()
 {
-	CMByteArray byteArry;
 	while (true)
 	{
 		memset(_dataBuffer, 0, _bufferSize);
@@ -36,23 +35,21 @@ void ReactorEventObj::onRecv()
 
 		if (size == 0)
 		{
-			_recvQueue.push(std::move(byteArry));
 			recvImp();
 			onClose();
 			return;
 		}
-		byteArry.append(_dataBuffer, size);
+		_recvBuffer.append(_dataBuffer, size);
 	}
-	_recvQueue.push(byteArry);
 	recvImp();
 }
 
 void ReactorEventObj::onSend()
 {
 	int offset = 0;
-	while (_sendArry.size() != offset)
+	while (_sendBuffer.size() != offset)
 	{
-		int ret = send(_fd, _sendArry.constData() + offset, _sendArry.size() - offset, 0);
+		int ret = send(_fd, _sendBuffer.constData() + offset, _sendBuffer.size() - offset, 0);
 		if (ret < 0)
 		{
 			if (errno != EWOULDBLOCK)
@@ -66,14 +63,14 @@ void ReactorEventObj::onSend()
 		}
 		if (ret == 0)
 		{
-			_sendArry.remove(0, offset + ret);
+			_sendBuffer.remove(0, offset + ret);
 			sendImp();
 			onClose();
 			return;
 		}
 		offset += ret;
 	}
-	_sendArry.remove(0, offset);
+	_sendBuffer.remove(0, offset);
 	sendImp();
 }
 

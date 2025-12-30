@@ -80,7 +80,7 @@ void KVTcpClient::recvImp()
 		echoData.append(data);
 		_recvQueue.pop();
 	}
-	_sendArry = echoData;
+	_sendBuffer = echoData;
 
 	_type = ReactorEventObj::ReadAndWrite;
 	_manger->updateEventObj(_fd);
@@ -89,7 +89,7 @@ void KVTcpClient::recvImp()
 
 void KVTcpClient::sendImp()
 {
-	if (_sendArry.isEmpty())
+	if (_sendBuffer.isEmpty())
 	{
 		_type = ReactorEventObj::Read;
 		_manger->updateEventObj(_fd);

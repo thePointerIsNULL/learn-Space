@@ -52,8 +52,8 @@ protected:
 	int _fd = -1;
 	EventType _type = EventType::None;
 	TriggerMode _mode = TriggerMode::ET;
-	std::queue<CMByteArray>  _recvQueue;
-	CMByteArray  _sendArry;
+	CMByteArray  _recvBuffer;
+	CMByteArray  _sendBuffer;
 	ReactorServer* _manger = nullptr;
 	char _dataBuffer[_bufferSize] = {};
 

@@ -2,7 +2,7 @@
 #include <atomic>
 #include <string.h>
 #include <memory>
-
+#include <vector>
 /*
 * 字符数组
 * 隐式共享 写时复制 非线程安全
@@ -37,6 +37,8 @@ public:
 	CMByteArray& prepend(const char* byte, size_t len);
 	CMByteArray& prepend(const CMByteArray& str);
 	CMByteArray& remove(size_t pos, size_t len = -1);
+	size_t find(const CMByteArray& value, size_t startPos = 0)const;
+	std::vector<CMByteArray> split(const CMByteArray& value)const;
 	void detach();
 	void clear();
 	void reserve(size_t size);
@@ -160,4 +162,6 @@ private:
 	size_t _capacity;
 
 };
+
+using CMByteArrayVector = std::vector<CMByteArray>;
 
